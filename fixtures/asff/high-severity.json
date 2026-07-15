@@ -1,0 +1,29 @@
+{
+  "version": "0",
+  "id": "synthetic-event-asff-0001",
+  "detail-type": "Security Hub Findings - Imported",
+  "source": "aws.securityhub",
+  "account": "000000000000",
+  "time": "2026-07-13T12:00:00Z",
+  "region": "us-east-1",
+  "resources": ["synthetic-resource"],
+  "detail": {
+    "findings": [{
+      "SchemaVersion": "2018-10-08",
+      "Id": "synthetic/asff/finding-0001",
+      "ProductName": "Security Hub CSPM custom synthetic",
+      "AwsAccountId": "000000000000",
+      "Region": "us-east-1",
+      "Title": "Synthetic high-severity compatibility finding",
+      "Description": "Sanitized synthetic data; this is not a real incident.",
+      "Severity": {"Label": "HIGH", "Normalized": 70},
+      "RecordState": "ACTIVE",
+      "Workflow": {"Status": "NEW"},
+      "CreatedAt": "2026-07-13T11:59:00Z",
+      "UpdatedAt": "2026-07-13T12:00:00Z",
+      "Resources": [{"Type": "AwsDemoSynthetic", "Id": "synthetic-resource-0001"}],
+      "ProductFields": {"aws-security-hub-workflow/synthetic": "true"}
+    }]
+  }
+}
+

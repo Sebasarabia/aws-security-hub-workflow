@@ -1,0 +1,29 @@
+{
+  "version": "0",
+  "id": "synthetic-event-ocsf-0001",
+  "detail-type": "Findings Imported V2",
+  "source": "aws.securityhub",
+  "account": "000000000000",
+  "time": "2026-07-13T12:00:00Z",
+  "region": "us-east-1",
+  "resources": ["synthetic-resource"],
+  "detail": {
+    "findings": [{
+      "metadata": {"version": "1.6.0", "product": {"name": "Amazon GuardDuty"}},
+      "finding_info": {
+        "uid": "synthetic/ocsf/finding-0001",
+        "title": "Synthetic high-severity teaching finding",
+        "desc": "Sanitized synthetic data; this is not a real incident.",
+        "created_time_dt": "2026-07-13T11:59:00Z",
+        "modified_time_dt": "2026-07-13T12:00:00Z"
+      },
+      "cloud": {"account": {"uid": "000000000000"}, "region": "us-east-1"},
+      "severity": "High",
+      "severity_id": 4,
+      "status": "NEW",
+      "resources": [{"type": "AWS::Demo::Synthetic", "uid": "synthetic-resource-0001"}],
+      "is_synthetic": true
+    }]
+  }
+}
+

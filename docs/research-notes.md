@@ -1,0 +1,120 @@
+# Technical reconciliation notes
+
+SPDX-License-Identifier: MIT-0
+
+Verification date: **2026-07-13**. Sources were limited to the authoritative sources
+requested for this project. The notes paraphrase rather than reproduce the sources.
+
+## Terminology and event contracts
+
+- Current **AWS Security Hub** is a unified service that consumes and generates OCSF
+  findings. AWS documents OCSF schema version 1.6. Its EventBridge detail type is
+  exactly `Findings Imported V2`, source `aws.securityhub`, and `detail.findings`
+  contains exactly one OCSF finding.
+- **AWS Security Hub CSPM** remains the posture-management capability and ASFF path.
+  Its detail type is exactly `Security Hub Findings - Imported`, also from
+  `aws.securityhub`; the event contains exactly one ASFF finding.
+- These names are intentionally separate in code and documentation. `dual` is a
+  migration/teaching mode and can process logically duplicated signals.
+
+## Versions selected
+
+- Terraform current stable: **1.15.8**. Configuration range: `>= 1.10.0, < 2.0.0`.
+  The lower bound retains native mocked-provider tests and is the tested policy floor.
+- HashiCorp AWS Provider current: **6.54.0**. Configuration range: `>= 6.54.0, < 7.0.0`;
+  the lockfile selects 6.54.0. The live Registry installer supplied this fresher signed
+  release than the search index's 6.49.0 result.
+- Lambda Python runtimes currently include 3.10 through 3.14. **Python 3.13** is used:
+  it runs on Amazon Linux 2023, is supported into 2029, and is a conservative stable
+  target for the selected libraries. Python 3.14 is supported but not necessary here.
+- Runtime dependencies are exact-pinned in `requirements.txt`, including Boto3.
+  The runtime-provided SDK is not relied upon.
+
+## Terraform support
+
+AWS Provider 6.54.0 supports the standard resources proposed here:
+`aws_cloudwatch_event_rule`, `aws_cloudwatch_event_target`, `aws_lambda_function`,
+`aws_lambda_permission`, `aws_iam_role`, `aws_iam_role_policy`,
+`aws_dynamodb_table`, `aws_sns_topic`, `aws_sqs_queue`, `aws_sqs_queue_policy`,
+`aws_cloudwatch_log_group`, and `aws_cloudwatch_metric_alarm`. No unsupported
+resource is required. Security Hub enablement/configuration resources are deliberately
+not proposed. The deployment artifact must be built before planning; Terraform does
+not install Python dependencies.
+
+## Regional availability and limitations
+
+- Security Hub and Security Hub CSPM are Regional and available in most, not all,
+  Regions. Endpoint lists and capability/integration/control availability must be
+  checked immediately before deployment. The reference defaults to `us-east-1` but
+  makes no universal-Region claim.
+- Security Hub CSPM only receives/processes findings in Regions where it is enabled.
+  Cross-Region aggregation has partition and opt-in-Region limitations, and individual
+  integrations/controls vary by Region.
+- EventBridge's target DLQ must be an SQS **standard** queue in the same Region as the
+  rule. The queue policy must grant `events.amazonaws.com` `sqs:SendMessage` only when
+  `aws:SourceArn` is one of the intended rules.
+- The Security Hub feed of an administrator or aggregation Region can include member
+  and linked-Region findings. This reference does not configure those relationships.
+
+## Powertools and GitHub Actions
+
+Powertools for AWS Lambda (Python) provides JSON Logger, EMF Metrics, and DynamoDB
+idempotency with concurrent in-progress protection and configurable expiry. Its
+default table key and TTL fields are `id` and `expiration`; those are used here.
+AWS recommends clients outside handlers, idempotent code, structured JSON logging,
+and asynchronous EMF metrics.
+
+GitHub recommends least-privilege explicit `GITHUB_TOKEN` permissions and complete
+commit-SHA pins because a full SHA is the immutable action reference. CI does not use
+`pull_request_target`, AWS credentials, or elevated fork permissions. Dependabot
+covers Actions and pip. A future deployment workflow should use OIDC and a protected
+environment; none is active in version 1.
+
+The March 2026 Trivy supply-chain incident affected mutable action/setup tags. CI
+therefore avoids the Trivy GitHub Action and installs standalone Trivy 0.72.0 after
+checking a hard-coded release SHA-256. This does not eliminate upstream risk, but it
+removes mutable action indirection and makes the consumed binary explicit.
+
+## Assumptions and uncertainties
+
+- OCSF has multiple finding classes and optional shapes. The adapter validates only
+  the bounded fields needed by the workflow and accepts documented timestamp variants.
+- Source product normalization uses a small allowlist and `OTHER`, preventing metric
+  cardinality from untrusted names.
+- Severity alone is a routing demonstration, not organizational risk measurement.
+- Provider docs are JavaScript-rendered; the Registry release page and installed
+  provider schema during `terraform init` are the final validation authorities.
+- Account ownership metadata was not available, so the license names repository
+  contributors rather than AWS or an individual.
+
+## Official references
+
+- [Terraform releases](https://releases.hashicorp.com/terraform/)
+- [AWS Provider Registry](https://registry.terraform.io/providers/hashicorp/aws/latest)
+- [Terraform provider requirements and lockfiles](https://developer.hashicorp.com/terraform/language/providers/requirements)
+- [Terraform mocked tests](https://developer.hashicorp.com/terraform/language/tests/mocking)
+- [S3 backend and S3 lockfiles](https://developer.hashicorp.com/terraform/language/backend/s3)
+- [Lambda supported runtimes](https://docs.aws.amazon.com/lambda/latest/dg/lambda-runtimes.html)
+- [Lambda Python runtimes](https://docs.aws.amazon.com/lambda/latest/dg/lambda-python.html)
+- [Lambda best practices](https://docs.aws.amazon.com/lambda/latest/dg/best-practices.html)
+- [Introduction to Security Hub](https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub-v2.html)
+- [Introduction to Security Hub CSPM](https://docs.aws.amazon.com/securityhub/latest/userguide/what-is-securityhub.html)
+- [Security Hub and OCSF](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-ocsf.html)
+- [Security Hub V2 EventBridge event types](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-v2-cwe-event-types.html)
+- [Security Hub V2 EventBridge format](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-v2-cwe-event-formats.html)
+- [Security Hub CSPM EventBridge format](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-cwe-event-formats.html)
+- [Security Hub CSPM regional limits](https://docs.aws.amazon.com/securityhub/latest/userguide/securityhub-regions.html)
+- [Security Hub CSPM endpoints](https://docs.aws.amazon.com/general/latest/gr/sechub.html)
+- [EventBridge retry policy](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-retry-policy.html)
+- [EventBridge target DLQs](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html)
+- [Powertools Python documentation](https://docs.powertools.aws.dev/lambda/python/latest/)
+- [GitHub Actions secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)
+- [Trivy 2026 security advisory](https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23)
+- [AWS Well-Architected Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html)
+- [AWS Security Reference Architecture](https://docs.aws.amazon.com/prescriptive-guidance/latest/security-reference-architecture/introduction.html)
+- [NIST CSF 2.0](https://www.nist.gov/cyberframework)
+- [NIST SP 800-61 Revision 3](https://csrc.nist.gov/pubs/sp/800/61/r3/final)
+- [NIST SP 800-218 SSDF 1.1](https://csrc.nist.gov/pubs/sp/800/218/final)
+- [OWASP IaC Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Infrastructure_as_Code_Security_Cheat_Sheet.html)
+- [OWASP CI/CD Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/CI_CD_Security_Cheat_Sheet.html)
+- [OWASP Software Supply Chain Security Cheat Sheet](https://cheatsheetseries.owasp.org/cheatsheets/Software_Supply_Chain_Security_Cheat_Sheet.html)

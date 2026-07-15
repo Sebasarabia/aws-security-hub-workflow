@@ -1,0 +1,8 @@
+{
+  "schema_version": "1.0",
+  "escalate_severities": ["CRITICAL", "HIGH"],
+  "record_severities": ["MEDIUM"],
+  "ignore_severities": ["LOW", "INFORMATIONAL"],
+  "ignored_workflow_statuses": ["RESOLVED", "SUPPRESSED"],
+  "require_active_record_state": true
+}
