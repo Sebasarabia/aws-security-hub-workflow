@@ -1,8 +1,8 @@
 # Exact development pins. SPDX-License-Identifier: MIT-0
 -r requirements.txt
-mypy==1.17.0
-pip-audit==2.9.0
-pytest==8.4.1
-pytest-cov==6.2.1
-ruff==0.12.5
-types-boto3-sns==1.39.0
+mypy==2.3.0
+pip-audit==2.10.1
+pytest==9.1.1
+pytest-cov==7.1.0
+ruff==0.16.0
+types-boto3-sns==1.43.23
