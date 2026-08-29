@@ -48,10 +48,10 @@ subscriptions; store raw findings; generate attack traffic; or perform remediati
 ## Local quick start (no AWS account)
 
 ```bash
-git clone https://github.com/OWNER/aws-security-hub-workflow.git
+git clone https://github.com/Sebasarabia/aws-security-hub-workflow.git
 cd aws-security-hub-workflow
 make setup
-make lint typecheck test
+make check
 make demo-local-ocsf
 make demo-local-asff
 ```
@@ -95,6 +95,7 @@ events are not incidents. See [`docs/demo-runbook.md`](docs/demo-runbook.md).
 | `aws_region` | `us-east-1` | Single deployment Region |
 | `idempotency_expiry_seconds` | `86400` | Duplicate suppression window |
 | `log_retention_days` | `30` | Explicit processing-log retention |
+| `log_level` | `INFO` | Powertools JSON log level |
 | `sns_kms_key_arn` | `null` | Existing key, otherwise `alias/aws/sns` |
 
 Policy lives in [`config/triage-policy.json`](config/triage-policy.json). Severity is only
@@ -112,12 +113,17 @@ availability differ. EventBridge's target DLQ covers delivery failure, not a Lam
 application error after successful invocation. For bursts, backpressure, independent
 consumers, multiple consumers, or explicit replay, insert SQS before Lambda.
 
+Repository-owner settings such as branch rules, private vulnerability reporting, and
+push protection are documented in
+[GitHub repository settings](docs/github-repository-settings.md).
+
 ## Contributing and security reporting
 
 See [CONTRIBUTING.md](CONTRIBUTING.md) for checks and [SECURITY.md](SECURITY.md) for private
 reporting guidance. Participation follows [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md).
+Release gates and the prepared `v0.1.0` notes are documented in
+[the release process](docs/release-process.md).
 
 ## License
 
 Licensed under the [MIT No Attribution License (MIT-0)](LICENSE).
-

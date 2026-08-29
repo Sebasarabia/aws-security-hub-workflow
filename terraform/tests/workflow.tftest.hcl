@@ -60,12 +60,40 @@ run "default_ocsf_configuration" {
     error_message = "Lambda schema environment is incorrect."
   }
   assert {
+    condition = (
+      aws_lambda_function.processor.environment[0].variables["POWERTOOLS_LOG_LEVEL"] == "INFO" &&
+      !contains(keys(aws_lambda_function.processor.environment[0].variables), "LOG_LEVEL")
+    )
+    error_message = "Lambda must use the supported Powertools log-level environment variable."
+  }
+  assert {
     condition     = aws_cloudwatch_event_target.processor["ocsf"].dead_letter_config[0].arn == aws_sqs_queue.eventbridge_dlq.arn
     error_message = "EventBridge target must use the DLQ."
   }
   assert {
-    condition     = aws_dynamodb_table.idempotency.billing_mode == "PAY_PER_REQUEST" && aws_dynamodb_table.idempotency.ttl[0].enabled
-    error_message = "DynamoDB must use on-demand billing and TTL."
+    condition = (
+      aws_cloudwatch_event_target.processor["ocsf"].retry_policy[0].maximum_event_age_in_seconds == 3600 &&
+      aws_cloudwatch_event_target.processor["ocsf"].retry_policy[0].maximum_retry_attempts == 10
+    )
+    error_message = "EventBridge retry policy changed unexpectedly."
+  }
+  assert {
+    condition = (
+      aws_lambda_permission.eventbridge["ocsf"].principal == "events.amazonaws.com" &&
+      aws_lambda_permission.eventbridge["ocsf"].action == "lambda:InvokeFunction" &&
+      aws_lambda_permission.eventbridge["ocsf"].source_arn == aws_cloudwatch_event_rule.findings["ocsf"].arn
+    )
+    error_message = "Lambda invocation permission must be scoped to the intended EventBridge rule."
+  }
+  assert {
+    condition = (
+      aws_dynamodb_table.idempotency.billing_mode == "PAY_PER_REQUEST" &&
+      aws_dynamodb_table.idempotency.ttl[0].enabled &&
+      aws_dynamodb_table.idempotency.ttl[0].attribute_name == "expiration" &&
+      aws_dynamodb_table.idempotency.server_side_encryption[0].enabled &&
+      !aws_dynamodb_table.idempotency.point_in_time_recovery[0].enabled
+    )
+    error_message = "DynamoDB must use on-demand billing, TTL, encryption, and no default PITR."
   }
   assert {
     condition     = aws_sns_topic.escalation.kms_master_key_id == "alias/aws/sns"
@@ -76,12 +104,42 @@ run "default_ocsf_configuration" {
     error_message = "Log retention default changed."
   }
   assert {
-    condition     = jsondecode(aws_sqs_queue_policy.eventbridge_dlq.policy).Statement[0].Condition.ArnEquals["aws:SourceArn"] != null
-    error_message = "DLQ policy must restrict source rule ARNs."
+    condition = (
+      jsondecode(aws_sqs_queue_policy.eventbridge_dlq.policy).Statement[0].Principal.Service == "events.amazonaws.com" &&
+      jsondecode(aws_sqs_queue_policy.eventbridge_dlq.policy).Statement[0].Action == "sqs:SendMessage" &&
+      jsondecode(aws_sqs_queue_policy.eventbridge_dlq.policy).Statement[0].Resource == aws_sqs_queue.eventbridge_dlq.arn &&
+      jsondecode(aws_sqs_queue_policy.eventbridge_dlq.policy).Statement[0].Condition.ArnEquals["aws:SourceArn"] != null
+    )
+    error_message = "DLQ policy must grant only the intended EventBridge rules."
   }
   assert {
-    condition     = alltrue([for statement in jsondecode(aws_iam_role_policy.processor.policy).Statement : !contains(flatten([statement.Action]), "iam:*")])
-    error_message = "Lambda role contains a wildcard IAM action."
+    condition = (
+      length(jsondecode(aws_iam_role_policy.processor.policy).Statement) == 3 &&
+      alltrue([for statement in jsondecode(aws_iam_role_policy.processor.policy).Statement : statement.Resource != "*"]) &&
+      alltrue(flatten([
+        for statement in jsondecode(aws_iam_role_policy.processor.policy).Statement : [
+          for action in flatten([statement.Action]) : !endswith(action, "*")
+        ]
+      ]))
+    )
+    error_message = "Lambda role must not contain wildcard actions or wildcard resources."
+  }
+  assert {
+    condition = (
+      toset(jsondecode(aws_iam_role_policy.processor.policy).Statement[0].Action) == toset(["logs:CreateLogStream", "logs:PutLogEvents"]) &&
+      toset(jsondecode(aws_iam_role_policy.processor.policy).Statement[1].Action) == toset(["dynamodb:DeleteItem", "dynamodb:GetItem", "dynamodb:PutItem", "dynamodb:UpdateItem"]) &&
+      jsondecode(aws_iam_role_policy.processor.policy).Statement[2].Action == "sns:Publish"
+    )
+    error_message = "Lambda IAM actions changed outside the reviewed least-privilege set."
+  }
+  assert {
+    condition = (
+      aws_cloudwatch_metric_alarm.lambda_errors.metric_name == "Errors" &&
+      aws_cloudwatch_metric_alarm.lambda_throttles.metric_name == "Throttles" &&
+      aws_cloudwatch_metric_alarm.dlq_visible.metric_name == "ApproximateNumberOfMessagesVisible" &&
+      aws_cloudwatch_metric_alarm.notification_failures.dimensions["service"] == "finding-processor"
+    )
+    error_message = "Required alarms or the Powertools service dimension are missing."
   }
   assert {
     condition     = local.common_tags["Project"] == "aws-security-hub-workflow" && local.common_tags["ManagedBy"] == "Terraform"
@@ -111,4 +169,10 @@ run "invalid_schema_mode" {
   command = plan
   variables { finding_schema_mode = "invalid" }
   expect_failures = [var.finding_schema_mode]
+}
+
+run "invalid_log_level" {
+  command = plan
+  variables { log_level = "TRACE" }
+  expect_failures = [var.log_level]
 }

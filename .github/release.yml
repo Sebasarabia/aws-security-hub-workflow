@@ -1,0 +1,22 @@
+# SPDX-License-Identifier: MIT-0
+changelog:
+  exclude:
+    labels:
+      - skip-changelog
+  categories:
+    - title: Security and reliability
+      labels:
+        - security
+        - reliability
+    - title: Features
+      labels:
+        - enhancement
+    - title: Documentation
+      labels:
+        - documentation
+    - title: Dependencies
+      labels:
+        - dependencies
+    - title: Other changes
+      labels:
+        - "*"

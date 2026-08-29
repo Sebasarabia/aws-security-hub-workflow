@@ -29,7 +29,7 @@ go to CloudWatch. There is no remediation path.
   uses ASFF and `Security Hub Findings - Imported`. Each event contains one finding.
 - Lambda supports Python 3.14 and 3.13. Python 3.13 is selected for maturity and
   dependency compatibility while retaining long support.
-- Terraform 1.15.8 and AWS Provider 6.54.0 were current on 2026-07-13. The tested
+- Terraform 1.15.8 and AWS Provider 6.62.0 were current on 2026-08-29. The tested
   minimum is Terraform 1.10 because all used native test features are available.
 - Provider v6 supports every v1 resource through standard `aws_*` resources; no
   Security Hub enablement resource is required or used.
@@ -45,8 +45,9 @@ handling apply at these boundaries.
 ## Testing strategy
 
 Unit and security tests cover envelopes, both adapters, sanitization, triage,
-notification construction, idempotency-key behavior, and handler outcomes. AWS calls
-use injected fakes or botocore Stubber. Native Terraform tests use a mocked provider
+notification construction, Powertools DynamoDB idempotency including concurrency and
+failure behavior, configuration, observability degradation, and handler outcomes. AWS
+calls use injected fakes or botocore Stubber. Native Terraform tests use a mocked provider
 and assert resource semantics. CI runs formatting, linting, typing, coverage,
 packaging, Terraform validation/tests, TFLint, Trivy configuration scanning,
 markdownlint, pip-audit, CodeQL, and Scorecard without AWS credentials.
