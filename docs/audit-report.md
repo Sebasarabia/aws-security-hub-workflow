@@ -4,7 +4,7 @@ SPDX-License-Identifier: MIT-0
 
 Audit date: **2026-08-29**
 Repository: `Sebasarabia/aws-security-hub-workflow`
-Prepared release version: **0.1.0** / intended tag **v0.1.0**
+Published release version: **0.1.0** / tag **v0.1.0**
 Audit scope: source, tests, Terraform, packaging, CI configuration, documentation,
 authenticated GitHub controls, and the explicitly authorized AWS deployment attempt.
 
@@ -15,7 +15,7 @@ security, packaging, and mocked Terraform gates. The audit corrected dependency 
 expanded idempotency and failure tests, strengthened Terraform/IAM assertions, fixed two
 observability configuration defects, and prepared release documentation.
 
-The repository is **not yet published as v0.1.0**. PR #15 was merged to protected
+The repository is published as **v0.1.0**. PRs #15 and #17 were merged to protected
 `main`; repository metadata, required checks, secret scanning, push protection,
 Dependabot security features, and private vulnerability reporting were applied and
 verified through the authenticated GitHub API.
@@ -347,9 +347,10 @@ automated security fixes, and private vulnerability reporting are enabled. The f
 obsolete Dependabot action-update PRs were closed after their versions landed through
 PR #15.
 
-The remaining host action is to create the annotated `v0.1.0` tag and GitHub Release
-after this updated audit evidence is reviewed and merged. Exact settings and release
-steps are in `docs/github-repository-settings.md` and `docs/release-process.md`.
+The annotated `v0.1.0` tag and public GitHub Release were created from the fully green
+release commit. The release is neither a draft nor a prerelease. Exact settings and the
+repeatable release process are in `docs/github-repository-settings.md` and
+`docs/release-process.md`.
 
 ## Safety confirmations
 
@@ -367,5 +368,5 @@ steps are in `docs/github-repository-settings.md` and `docs/release-process.md`.
 - Only repository-owned synthetic fixtures were invoked directly. Exactly one SNS
   publication occurred for two identical valid invocations, and raw fixture text was
   absent from inspected logs.
-- PR #15 was committed, pushed, checked, and squash-merged. GitHub repository settings
-  were hardened. No tag or GitHub Release has yet been created.
+- PRs #15 and #17 were committed, pushed, checked, and squash-merged. GitHub repository
+  settings were hardened, and the annotated `v0.1.0` tag and public Release were created.

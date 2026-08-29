@@ -14,7 +14,7 @@ SPDX-License-Identifier: MIT-0
 | 3 | Documentation and outlines | Complete | markdownlint-cli2 | 29 files, no errors |
 | 3 | Reproducible Lambda package | Complete | `make package` twice | Identical SHA-256 checksums |
 | 3 | Dependency refresh | Complete | `make setup`, `pip-audit` | Corrected incompatible Dependabot Pydantic Core pin |
-| 3 | v0.1.0 release preparation | In progress | Review release docs | PR #15 merged; final evidence PR and release remain |
+| 3 | v0.1.0 release publication | Complete | GitHub Release and tag verification | PRs #15/#17 merged; annotated tag and public release published |
 | 3 | GitHub protection, metadata, security settings | Complete | Authenticated API verification | `main` protected; scanning, alerts, topics, and private reporting enabled |
 | 3 | AWS sandbox validation | Complete | `docs/deployment-validation.md` | SS5 deployed; infrastructure and synthetic Lambda behavior verified; Security Hub delivery not exercised |
 | 3 | Presentation material | Complete for repository | `docs/talk-outline.md` | Complete 30-minute script; repository owner is preparing the visual deck |

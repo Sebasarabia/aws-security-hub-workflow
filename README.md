@@ -5,6 +5,8 @@ EventBridge to one Lambda processor for schema validation, normalization, explai
 triage, duplicate suppression, and minimal SNS escalation. It accompanies a Road to AWS
 Community Day Bolivia presentation and is suitable as a reproducible article companion.
 
+Current release: [`v0.1.0`](https://github.com/Sebasarabia/aws-security-hub-workflow/releases/tag/v0.1.0).
+
 > **Educational sample:** This community project is not owned, supported, certified, or
 > endorsed by AWS. It is not production-ready, does not establish compliance, and must be
 > adapted to your risk, operations, retention, and incident-response requirements.
