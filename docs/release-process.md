@@ -24,7 +24,7 @@ Before creating a tag:
 
 1. Refresh `docs/research-notes.md` against primary documentation.
 2. Resolve or explicitly defer open dependency and security alerts.
-3. Confirm `main` uses the ruleset in `docs/github-repository-settings.md`.
+3. Confirm `main` uses the protection in `docs/github-repository-settings.md`.
 4. Run `make check` in a clean supported environment.
 5. Run both local demos and inspect their sanitized output.
 6. Run `make package` twice from clean build directories and compare SHA-256 output.

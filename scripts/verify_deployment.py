@@ -5,8 +5,25 @@
 from __future__ import annotations
 
 import argparse
+import base64
+import hashlib
+import json
+from pathlib import Path
+from typing import Any
 
 import boto3
+
+
+def require(condition: bool, message: str) -> None:
+    """Raise a stable verification error without including provider payloads."""
+    if not condition:
+        raise RuntimeError(message)
+
+
+def statements(document: dict[str, Any]) -> list[dict[str, Any]]:
+    """Return IAM statements with a consistent list shape."""
+    value = document.get("Statement", [])
+    return value if isinstance(value, list) else [value]
 
 
 def main() -> int:
@@ -14,16 +31,153 @@ def main() -> int:
     parser.add_argument("--function-name", required=True)
     parser.add_argument("--table-name", required=True)
     parser.add_argument("--topic-arn", required=True)
+    parser.add_argument("--rule-name", required=True)
+    parser.add_argument("--dlq-url", required=True)
+    parser.add_argument("--region", default="us-east-1")
+    parser.add_argument("--schema-mode", choices=("ocsf", "asff", "dual"), default="ocsf")
+    parser.add_argument("--package", type=Path)
+    parser.add_argument("--expect-idempotency-record", action="store_true")
     args = parser.parse_args()
-    lambda_cfg = boto3.client("lambda").get_function_configuration(FunctionName=args.function_name)
-    table = boto3.client("dynamodb").describe_table(TableName=args.table_name)["Table"]
-    topic = boto3.client("sns").get_topic_attributes(TopicArn=args.topic_arn)["Attributes"]
+
+    session = boto3.Session(region_name=args.region)
+    lambda_client = session.client("lambda")
+    dynamodb = session.client("dynamodb")
+    sns = session.client("sns")
+    events = session.client("events")
+    sqs = session.client("sqs")
+    logs = session.client("logs")
+    cloudwatch = session.client("cloudwatch")
+    iam = session.client("iam")
+
+    lambda_cfg = lambda_client.get_function_configuration(FunctionName=args.function_name)
+    require(lambda_cfg.get("State") == "Active", "Lambda is not active")
+    require(lambda_cfg.get("Runtime") == "python3.13", "unexpected Lambda runtime")
+    require(lambda_cfg.get("Architectures") == ["arm64"], "unexpected Lambda architecture")
+    require(lambda_cfg.get("Timeout") == 30, "unexpected Lambda timeout")
+    environment = lambda_cfg.get("Environment", {}).get("Variables", {})
+    expected_environment = {
+        "FINDING_SCHEMA_MODE": args.schema_mode,
+        "IDEMPOTENCY_TABLE": args.table_name,
+        "NOTIFICATION_TOPIC_ARN": args.topic_arn,
+        "POWERTOOLS_LOG_LEVEL": "INFO",
+        "POWERTOOLS_METRICS_NAMESPACE": "SecurityHubWorkflow",
+        "POWERTOOLS_SERVICE_NAME": "finding-processor",
+        "TRIAGE_POLICY_PATH": "config/triage-policy.json",
+    }
+    require(
+        all(environment.get(key) == value for key, value in expected_environment.items()),
+        "Lambda environment does not match the reviewed configuration",
+    )
+    if args.package:
+        digest = hashlib.sha256(args.package.read_bytes()).digest()
+        require(
+            lambda_cfg.get("CodeSha256") == base64.b64encode(digest).decode("ascii"),
+            "deployed Lambda package checksum does not match",
+        )
+
+    table = dynamodb.describe_table(TableName=args.table_name)["Table"]
+    require(table.get("TableStatus") == "ACTIVE", "DynamoDB table is not active")
+    require(
+        table.get("BillingModeSummary", {}).get("BillingMode") == "PAY_PER_REQUEST",
+        "DynamoDB table is not on-demand",
+    )
+    require(
+        table.get("SSEDescription", {}).get("Status") == "ENABLED",
+        "DynamoDB encryption is not enabled",
+    )
+    ttl = dynamodb.describe_time_to_live(TableName=args.table_name)["TimeToLiveDescription"]
+    require(ttl.get("AttributeName") == "expiration", "unexpected DynamoDB TTL attribute")
+    require(ttl.get("TimeToLiveStatus") in {"ENABLED", "ENABLING"}, "DynamoDB TTL is disabled")
+    backups = dynamodb.describe_continuous_backups(TableName=args.table_name)
+    pitr = backups["ContinuousBackupsDescription"]["PointInTimeRecoveryDescription"]
+    require(pitr.get("PointInTimeRecoveryStatus") == "DISABLED", "DynamoDB PITR is enabled")
+    if args.expect_idempotency_record:
+        count = dynamodb.scan(TableName=args.table_name, Select="COUNT", ConsistentRead=True)["Count"]
+        require(count > 0, "expected idempotency record is absent")
+
+    topic = sns.get_topic_attributes(TopicArn=args.topic_arn)["Attributes"]
+    require(topic.get("KmsMasterKeyId") == "alias/aws/sns", "unexpected SNS encryption key")
+    require(topic.get("SubscriptionsConfirmed") == "0", "unexpected SNS subscription exists")
+
+    rule = events.describe_rule(Name=args.rule_name)
+    require(rule.get("State") == "ENABLED", "EventBridge rule is disabled")
+    pattern = json.loads(rule["EventPattern"])
+    expected_type = "Findings Imported V2" if args.schema_mode == "ocsf" else None
+    if expected_type:
+        require(pattern.get("source") == ["aws.securityhub"], "unexpected EventBridge source")
+        require(pattern.get("detail-type") == [expected_type], "unexpected EventBridge event type")
+    targets = events.list_targets_by_rule(Rule=args.rule_name)["Targets"]
+    require(len(targets) == 1, "EventBridge rule must have exactly one target")
+    target = targets[0]
+    require(target.get("Arn") == lambda_cfg.get("FunctionArn"), "unexpected EventBridge target")
+    require(target.get("RetryPolicy", {}).get("MaximumEventAgeInSeconds") == 3600, "bad event age")
+    require(target.get("RetryPolicy", {}).get("MaximumRetryAttempts") == 10, "bad retry count")
+
+    queue = sqs.get_queue_attributes(QueueUrl=args.dlq_url, AttributeNames=["All"])["Attributes"]
+    require(queue.get("SqsManagedSseEnabled") == "true", "SQS managed encryption is disabled")
+    require(queue.get("ApproximateNumberOfMessages") == "0", "EventBridge DLQ is not empty")
+    require(target.get("DeadLetterConfig", {}).get("Arn") == queue.get("QueueArn"), "bad DLQ target")
+    queue_policy = json.loads(queue["Policy"])
+    queue_statements = statements(queue_policy)
+    require(len(queue_statements) == 1, "unexpected SQS queue policy statement count")
+    queue_statement = queue_statements[0]
+    require(queue_statement.get("Principal") == {"Service": "events.amazonaws.com"}, "bad DLQ principal")
+    require(queue_statement.get("Action") == "sqs:SendMessage", "bad DLQ action")
+    source_arns = queue_statement.get("Condition", {}).get("ArnEquals", {}).get("aws:SourceArn", [])
+    source_arns = source_arns if isinstance(source_arns, list) else [source_arns]
+    require(rule.get("Arn") in source_arns, "DLQ policy is not restricted to the rule")
+
+    function_policy = json.loads(lambda_client.get_policy(FunctionName=args.function_name)["Policy"])
+    invoke_statements = statements(function_policy)
+    require(len(invoke_statements) == 1, "unexpected Lambda resource-policy statement count")
+    invoke = invoke_statements[0]
+    require(invoke.get("Principal") == {"Service": "events.amazonaws.com"}, "bad Lambda principal")
+    require(invoke.get("Action") == "lambda:InvokeFunction", "bad Lambda invoke action")
+    require(
+        invoke.get("Condition", {}).get("ArnLike", {}).get("AWS:SourceArn") == rule.get("Arn"),
+        "Lambda permission is not restricted to the rule",
+    )
+
+    role_name = lambda_cfg["Role"].rsplit("/", maxsplit=1)[-1]
+    role_policy = iam.get_role_policy(RoleName=role_name, PolicyName=role_name)["PolicyDocument"]
+    for statement in statements(role_policy):
+        actions = statement.get("Action", [])
+        actions = actions if isinstance(actions, list) else [actions]
+        resources = statement.get("Resource", [])
+        resources = resources if isinstance(resources, list) else [resources]
+        require(all("*" not in action for action in actions), "wildcard IAM action detected")
+        require("*" not in resources, "wildcard IAM resource detected")
+
+    log_groups = logs.describe_log_groups(logGroupNamePrefix=f"/aws/lambda/{args.function_name}", limit=1)[
+        "logGroups"
+    ]
+    require(len(log_groups) == 1, "Lambda log group is absent")
+    require(log_groups[0].get("retentionInDays") == 30, "unexpected log retention")
+
+    expected_alarms = {
+        "security-hub-workflow-demo-lambda-errors",
+        "security-hub-workflow-demo-lambda-throttles",
+        "security-hub-workflow-demo-dlq-visible",
+        "security-hub-workflow-demo-notification-failures",
+    }
+    alarms = cloudwatch.describe_alarms(AlarmNamePrefix="security-hub-workflow-demo-")
+    actual_alarms = {alarm["AlarmName"] for alarm in alarms["MetricAlarms"]}
+    require(expected_alarms <= actual_alarms, "one or more required alarms are absent")
+
     print(
-        {
-            "lambda_state": lambda_cfg.get("State"),
-            "table_status": table.get("TableStatus"),
-            "topic": topic.get("TopicArn"),
-        }
+        json.dumps(
+            {
+                "alarms": "verified",
+                "dlq": "empty_and_restricted",
+                "dynamodb": "active_encrypted_ttl_enabled_pitr_disabled",
+                "eventbridge": "enabled_single_restricted_target",
+                "iam": "no_wildcard_actions_or_resources",
+                "lambda": "active_python3.13_arm64_package_verified",
+                "logs": "retention_verified",
+                "sns": "encrypted_no_subscriptions",
+            },
+            sort_keys=True,
+        )
     )
     return 0
 

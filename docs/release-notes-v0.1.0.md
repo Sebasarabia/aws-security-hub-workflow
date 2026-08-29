@@ -31,7 +31,7 @@ Synthetic fixtures are unmistakably labeled and contain no real account or findi
 
 ## Compatibility
 
-- Terraform `>= 1.10.0, < 2.0.0`; validated with 1.15.8.
+- Terraform `>= 1.10.0, < 2.0.0`; validated with 1.16.0.
 - AWS Provider `>= 6.54.0, < 7.0.0`; lockfile selects 6.62.0.
 - AWS Lambda Python 3.13 on arm64.
 - OCSF is the default. ASFF is an optional Security Hub CSPM compatibility path.
@@ -39,8 +39,9 @@ Synthetic fixtures are unmistakably labeled and contain no real account or findi
 
 ## Known limitations
 
-- The reference has not been deployed by the release automation and makes no
-  production-readiness or compliance claim.
+- An authorized SS5 sandbox deployment and direct synthetic Lambda validation passed.
+  Security Hub is not enabled in that account, so AWS-owned EventBridge delivery remains
+  unvalidated; the reference makes no production-readiness or compliance claim.
 - Idempotency suppresses repeated deliveries of the same schema/update key; it does not
   semantically correlate OCSF and ASFF findings.
 - EventBridge's DLQ covers failed target delivery, not an application exception after a

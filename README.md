@@ -75,7 +75,8 @@ bundles exact runtime dependencies for Python 3.13/arm64 and writes a SHA-256 ch
 
 Deployment is deliberately separate from the quick start. Read
 [`docs/deployment.md`](docs/deployment.md), [`docs/security-design.md`](docs/security-design.md),
-and [`docs/costs-and-cleanup.md`](docs/costs-and-cleanup.md) first. Then build the package,
+[`docs/costs-and-cleanup.md`](docs/costs-and-cleanup.md), and the dated
+[`deployment validation record`](docs/deployment-validation.md) first. Then build the package,
 copy `terraform/terraform.tfvars.example` to an ignored `.tfvars`, replace the example
 account ID, inspect `terraform plan`, and apply manually only after approval. There is no
 deployment workflow or `make deploy` command.
