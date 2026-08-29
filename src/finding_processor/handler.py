@@ -21,6 +21,7 @@ from finding_processor.sanitization import mask_account_id
 from finding_processor.triage import evaluate, load_policy
 
 _sns = boto3.client("sns")
+_dynamodb = boto3.client("dynamodb")
 _local_idempotency = LocalIdempotency()
 
 
@@ -35,7 +36,13 @@ def _allowed_family(mode: str, detail_type: object) -> bool:
     return mode == "dual" or mode == family
 
 
-def process_event(event: Mapping[str, Any], *, settings: Settings, sns_client: Any = None) -> dict[str, Any]:
+def process_event(
+    event: Mapping[str, Any],
+    *,
+    settings: Settings,
+    sns_client: Any = None,
+    lambda_context: Any = None,
+) -> dict[str, Any]:
     started = time.perf_counter()
     event_id = str(event.get("id", "UNKNOWN"))[:64]
     logger.append_keys(correlation_id=event_id)
@@ -70,6 +77,8 @@ def process_event(event: Mapping[str, Any], *, settings: Settings, sns_client: A
                 expiry_seconds=settings.idempotency_expiry_seconds,
                 key=key,
                 operation=side_effect,
+                dynamodb_client=_dynamodb,
+                lambda_context=lambda_context,
             )
         if duplicate:
             metric("DuplicateFindings")
@@ -112,4 +121,4 @@ def process_event(event: Mapping[str, Any], *, settings: Settings, sns_client: A
 @logger.inject_lambda_context(clear_state=True, log_event=False)
 @metrics.log_metrics(capture_cold_start_metric=True)
 def lambda_handler(event: dict[str, Any], context: Any) -> dict[str, Any]:
-    return process_event(event, settings=load_settings())
+    return process_event(event, settings=load_settings(), lambda_context=context)

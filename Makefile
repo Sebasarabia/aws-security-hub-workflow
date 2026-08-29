@@ -9,6 +9,7 @@ setup:
 	$(PYTHON) -m pip install --upgrade pip
 	$(PYTHON) -m pip install -r requirements-dev.txt
 	$(PYTHON) -m pip install -e . --no-deps
+	$(PYTHON) -m pip check
 
 format:
 	$(RUFF) format src tests scripts

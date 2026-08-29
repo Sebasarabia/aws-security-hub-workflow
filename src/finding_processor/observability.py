@@ -10,5 +10,11 @@ logger = Logger(service="finding-processor", utc=True, use_rfc3339=True)
 metrics = Metrics(namespace="SecurityHubWorkflow", service="finding-processor")
 
 
-def metric(name: str, value: float = 1, unit: MetricUnit = MetricUnit.Count) -> None:
-    metrics.add_metric(name=name, unit=unit, value=value)
+def metric(name: str, value: float = 1, unit: MetricUnit = MetricUnit.Count) -> bool:
+    """Emit a metric without making observability failure change the workflow decision."""
+    try:
+        metrics.add_metric(name=name, unit=unit, value=value)
+    except Exception:  # Metrics are non-critical; never expose provider exception content.
+        logger.warning("metric_emission_failed", extra={"metric_name": name})
+        return False
+    return True

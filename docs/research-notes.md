@@ -2,7 +2,7 @@
 
 SPDX-License-Identifier: MIT-0
 
-Verification date: **2026-07-13**. Sources were limited to the authoritative sources
+Verification date: **2026-08-29**. Sources were limited to the authoritative sources
 requested for this project. The notes paraphrase rather than reproduce the sources.
 
 ## Terminology and event contracts
@@ -21,18 +21,26 @@ requested for this project. The notes paraphrase rather than reproduce the sourc
 
 - Terraform current stable: **1.15.8**. Configuration range: `>= 1.10.0, < 2.0.0`.
   The lower bound retains native mocked-provider tests and is the tested policy floor.
-- HashiCorp AWS Provider current: **6.54.0**. Configuration range: `>= 6.54.0, < 7.0.0`;
-  the lockfile selects 6.54.0. The live Registry installer supplied this fresher signed
-  release than the search index's 6.49.0 result.
-- Lambda Python runtimes currently include 3.10 through 3.14. **Python 3.13** is used:
-  it runs on Amazon Linux 2023, is supported into 2029, and is a conservative stable
-  target for the selected libraries. Python 3.14 is supported but not necessary here.
+- HashiCorp AWS Provider current: **6.62.0**. Configuration range: `>= 6.54.0, < 7.0.0`;
+  the lockfile selects 6.62.0. Terraform 1.15.8 installed this signed release directly
+  from the Registry during verification.
+- Lambda Python runtimes currently include stable Python 3.10 through 3.14. Python 3.15
+  is public preview and is not covered by the Lambda SLA or Technical Support.
+  **Python 3.13** remains selected: it runs on Amazon Linux 2023, is supported into
+  2029, and is compatible with all pinned dependencies. A preview runtime is not
+  appropriate for this reference.
+- Powertools for AWS Lambda (Python) **3.34.0** is selected. Its official release and
+  current documentation retain Logger, EMF Metrics, Pydantic-based validation, and
+  DynamoDB idempotency capabilities used here.
+- Runtime pins were refreshed to Boto3 1.43.72 and Pydantic 2.13.4. Dependabot proposed
+  an incompatible Pydantic Core 2.48.0 pin; installation proved Pydantic 2.13.4 requires
+  exactly Pydantic Core 2.46.4, which is the corrected reproducible pin.
 - Runtime dependencies are exact-pinned in `requirements.txt`, including Boto3.
   The runtime-provided SDK is not relied upon.
 
 ## Terraform support
 
-AWS Provider 6.54.0 supports the standard resources proposed here:
+AWS Provider 6.62.0 supports the standard resources proposed here:
 `aws_cloudwatch_event_rule`, `aws_cloudwatch_event_target`, `aws_lambda_function`,
 `aws_lambda_permission`, `aws_iam_role`, `aws_iam_role_policy`,
 `aws_dynamodb_table`, `aws_sns_topic`, `aws_sqs_queue`, `aws_sqs_queue_policy`,
@@ -70,8 +78,15 @@ commit-SHA pins because a full SHA is the immutable action reference. CI does no
 covers Actions and pip. A future deployment workflow should use OIDC and a protected
 environment; none is active in version 1.
 
+The refreshed SHA-pinned actions are checkout 7.0.0, setup-python 6.3.0,
+setup-terraform 4.0.1, setup-tflint 6.3.0, and OpenSSF Scorecard 2.4.3. CodeQL remains
+on 3.37.0. Version comments now match the immutable commits selected by Dependabot.
+Branch rulesets, secret scanning, push protection, Dependabot alerts/security updates,
+and private vulnerability reporting are repository-host settings and must be verified
+by an authenticated owner; their intended configuration is recorded separately.
+
 The March 2026 Trivy supply-chain incident affected mutable action/setup tags. CI
-therefore avoids the Trivy GitHub Action and installs standalone Trivy 0.72.0 after
+therefore avoids the Trivy GitHub Action and installs standalone Trivy 0.74.0 after
 checking a hard-coded release SHA-256. This does not eliminate upstream risk, but it
 removes mutable action indirection and makes the consumed binary explicit.
 
@@ -91,6 +106,7 @@ removes mutable action indirection and makes the consumed binary explicit.
 
 - [Terraform releases](https://releases.hashicorp.com/terraform/)
 - [AWS Provider Registry](https://registry.terraform.io/providers/hashicorp/aws/latest)
+- [AWS Provider 6.62.0 release](https://github.com/hashicorp/terraform-provider-aws/releases/tag/v6.62.0)
 - [Terraform provider requirements and lockfiles](https://developer.hashicorp.com/terraform/language/providers/requirements)
 - [Terraform mocked tests](https://developer.hashicorp.com/terraform/language/tests/mocking)
 - [S3 backend and S3 lockfiles](https://developer.hashicorp.com/terraform/language/backend/s3)
@@ -108,7 +124,10 @@ removes mutable action indirection and makes the consumed binary explicit.
 - [EventBridge retry policy](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-retry-policy.html)
 - [EventBridge target DLQs](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html)
 - [Powertools Python documentation](https://docs.powertools.aws.dev/lambda/python/latest/)
+- [Powertools Python 3.34.0 release](https://github.com/aws-powertools/powertools-lambda-python/releases/tag/v3.34.0)
 - [GitHub Actions secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)
+- [GitHub ruleset rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
+- [GitHub private vulnerability reporting](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository)
 - [Trivy 2026 security advisory](https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23)
 - [AWS Well-Architected Security Pillar](https://docs.aws.amazon.com/wellarchitected/latest/security-pillar/welcome.html)
 - [AWS Security Reference Architecture](https://docs.aws.amazon.com/prescriptive-guidance/latest/security-reference-architecture/introduction.html)

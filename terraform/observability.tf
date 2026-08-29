@@ -58,5 +58,7 @@ resource "aws_cloudwatch_metric_alarm" "notification_failures" {
   threshold           = 0
   comparison_operator = "GreaterThanThreshold"
   treat_missing_data  = "notBreaching"
+  dimensions = {
+    service = "finding-processor"
+  }
 }
-

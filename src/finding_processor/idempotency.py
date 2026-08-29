@@ -23,6 +23,8 @@ def run_with_powertools(
     expiry_seconds: int,
     key: str,
     operation: Callable[[], dict[str, Any]],
+    dynamodb_client: Any | None = None,
+    lambda_context: Any | None = None,
 ) -> tuple[dict[str, Any], bool]:
     """Execute one operation using Powertools' concurrency-safe DynamoDB records."""
     from aws_lambda_powertools.utilities.idempotency import (  # lazy for local demo
@@ -32,7 +34,7 @@ def run_with_powertools(
     )
     from aws_lambda_powertools.utilities.idempotency.persistence.datarecord import DataRecord
 
-    persistence = DynamoDBPersistenceLayer(table_name=table_name)
+    persistence = DynamoDBPersistenceLayer(table_name=table_name, boto3_client=dynamodb_client)
 
     def duplicate_response(response: Any, idempotent_data: DataRecord) -> dict[str, str]:
         del response, idempotent_data
@@ -43,8 +45,10 @@ def run_with_powertools(
         use_local_cache=True,
         response_hook=duplicate_response,
     )
+    if lambda_context is not None:
+        config.register_lambda_context(lambda_context)
 
-    @idempotent_function(  # type: ignore[misc]
+    @idempotent_function(  # type: ignore[untyped-decorator]
         data_keyword_argument="payload",
         persistence_store=persistence,
         config=config,

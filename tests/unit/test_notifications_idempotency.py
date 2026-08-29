@@ -3,14 +3,19 @@
 from __future__ import annotations
 
 import json
+import time
 from datetime import UTC, datetime
 
 import boto3
 import pytest
-from botocore.stub import Stubber
+from aws_lambda_powertools.utilities.idempotency.exceptions import (
+    IdempotencyAlreadyInProgressError,
+    IdempotencyPersistenceLayerError,
+)
+from botocore.stub import ANY, Stubber
 
 from finding_processor.exceptions import NotificationError
-from finding_processor.idempotency import LocalIdempotency, idempotency_key
+from finding_processor.idempotency import LocalIdempotency, idempotency_key, run_with_powertools
 from finding_processor.models import (
     DecisionType,
     NormalizedFinding,
@@ -77,6 +82,131 @@ def test_local_first_duplicate_and_updated() -> None:
     assert gate.run("one", operation)[1] is True
     assert gate.run("two", operation)[1] is False
     assert len(calls) == 2
+
+
+class FakeLambdaContext:
+    def get_remaining_time_in_millis(self) -> int:
+        return 30_000
+
+
+def dynamodb_client() -> object:
+    return boto3.client("dynamodb", region_name="us-east-1")
+
+
+def test_powertools_first_delivery_and_expiry_condition() -> None:
+    client = dynamodb_client()
+    with Stubber(client) as stubber:
+        stubber.add_response(
+            "put_item",
+            {},
+            {
+                "TableName": "idempotency-test",
+                "Item": ANY,
+                "ConditionExpression": (
+                    "attribute_not_exists(#id) OR #expiry < :now OR "
+                    "(#status = :inprogress AND attribute_exists(#in_progress_expiry) "
+                    "AND #in_progress_expiry < :now_in_millis)"
+                ),
+                "ExpressionAttributeNames": {
+                    "#id": "id",
+                    "#expiry": "expiration",
+                    "#in_progress_expiry": "in_progress_expiration",
+                    "#status": "status",
+                },
+                "ExpressionAttributeValues": {
+                    ":now": ANY,
+                    ":now_in_millis": ANY,
+                    ":inprogress": {"S": "INPROGRESS"},
+                },
+                "ReturnValuesOnConditionCheckFailure": "ALL_OLD",
+            },
+        )
+        stubber.add_response("update_item", {})
+        result, duplicate = run_with_powertools(
+            table_name="idempotency-test",
+            expiry_seconds=60,
+            key="stable-key",
+            operation=lambda: {"decision": "ESCALATE", "reason_code": "TEST"},
+            dynamodb_client=client,
+            lambda_context=FakeLambdaContext(),
+        )
+    assert result == {"decision": "ESCALATE", "reason_code": "TEST"}
+    assert duplicate is False
+
+
+def test_powertools_exact_duplicate() -> None:
+    client = dynamodb_client()
+    stored = {
+        "id": {"S": "stored-key"},
+        "expiration": {"N": str(int(time.time()) + 60)},
+        "status": {"S": "COMPLETED"},
+        "data": {"S": json.dumps({"decision": "ESCALATE", "reason_code": "TEST"})},
+    }
+    with Stubber(client) as stubber:
+        stubber.add_client_error(
+            "put_item",
+            service_error_code="ConditionalCheckFailedException",
+            service_message="record exists",
+            http_status_code=400,
+        )
+        stubber.add_response("get_item", {"Item": stored})
+        result, duplicate = run_with_powertools(
+            table_name="idempotency-test",
+            expiry_seconds=60,
+            key="stable-key",
+            operation=lambda: pytest.fail("duplicate must not execute the protected operation"),
+            dynamodb_client=client,
+            lambda_context=FakeLambdaContext(),
+        )
+    assert result == {"decision": "DUPLICATE", "reason_code": "IDEMPOTENCY_RECORD_EXISTS"}
+    assert duplicate is True
+
+
+def test_powertools_concurrent_duplicate() -> None:
+    client = dynamodb_client()
+    stored = {
+        "id": {"S": "stored-key"},
+        "expiration": {"N": str(int(time.time()) + 60)},
+        "in_progress_expiration": {"N": str(int(time.time() * 1000) + 30_000)},
+        "status": {"S": "INPROGRESS"},
+    }
+    with Stubber(client) as stubber:
+        stubber.add_client_error(
+            "put_item",
+            service_error_code="ConditionalCheckFailedException",
+            service_message="record in progress",
+            http_status_code=400,
+        )
+        stubber.add_response("get_item", {"Item": stored})
+        with pytest.raises(IdempotencyAlreadyInProgressError):
+            run_with_powertools(
+                table_name="idempotency-test",
+                expiry_seconds=60,
+                key="stable-key",
+                operation=lambda: pytest.fail("concurrent duplicate must not execute"),
+                dynamodb_client=client,
+                lambda_context=FakeLambdaContext(),
+            )
+
+
+def test_powertools_dynamodb_failure() -> None:
+    client = dynamodb_client()
+    with Stubber(client) as stubber:
+        stubber.add_client_error(
+            "put_item",
+            service_error_code="InternalServerError",
+            service_message="untrusted provider detail",
+            http_status_code=500,
+        )
+        with pytest.raises(IdempotencyPersistenceLayerError):
+            run_with_powertools(
+                table_name="idempotency-test",
+                expiry_seconds=60,
+                key="stable-key",
+                operation=lambda: pytest.fail("failed lock must not execute"),
+                dynamodb_client=client,
+                lambda_context=FakeLambdaContext(),
+            )
 
 
 class BrokenSNS:

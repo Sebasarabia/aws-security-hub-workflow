@@ -1,5 +1,9 @@
 # SPDX-License-Identifier: MIT-0
 .idea/
+.DS_Store
+.env
+.env.*
+!.env.example
 .venv/
 __pycache__/
 *.py[cod]
@@ -17,6 +21,9 @@ build/
 *.tfstate.*
 *.tfplan
 *.tfvars
+*.tfvars.json
 !terraform/terraform.tfvars.example
 crash.log
 backend.hcl
+.terraformrc
+terraform.rc

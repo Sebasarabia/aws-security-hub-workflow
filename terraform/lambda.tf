@@ -25,7 +25,7 @@ resource "aws_lambda_function" "processor" {
       TRIAGE_POLICY_PATH           = "config/triage-policy.json"
       POWERTOOLS_SERVICE_NAME      = "finding-processor"
       POWERTOOLS_METRICS_NAMESPACE = "SecurityHubWorkflow"
-      LOG_LEVEL                    = "INFO"
+      POWERTOOLS_LOG_LEVEL         = var.log_level
     }
   }
 
@@ -35,4 +35,3 @@ resource "aws_lambda_function" "processor" {
 
   depends_on = [aws_cloudwatch_log_group.processor]
 }
-

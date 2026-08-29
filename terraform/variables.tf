@@ -75,6 +75,16 @@ variable "log_retention_days" {
   }
 }
 
+variable "log_level" {
+  description = "Powertools structured logging level. DEBUG can increase cost and should be temporary."
+  type        = string
+  default     = "INFO"
+  validation {
+    condition     = contains(["DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"], var.log_level)
+    error_message = "log_level must be DEBUG, INFO, WARNING, ERROR, or CRITICAL."
+  }
+}
+
 variable "idempotency_expiry_seconds" {
   description = "Seconds before Powertools idempotency records can be reused."
   type        = number
@@ -121,4 +131,3 @@ variable "additional_tags" {
   type        = map(string)
   default     = {}
 }
-
