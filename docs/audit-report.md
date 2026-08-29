@@ -6,7 +6,7 @@ Audit date: **2026-08-29**
 Repository: `Sebasarabia/aws-security-hub-workflow`
 Prepared release version: **0.1.0** / intended tag **v0.1.0**
 Audit scope: source, tests, Terraform, packaging, CI configuration, documentation,
-public GitHub metadata, and non-mutating local validation.
+authenticated GitHub controls, and the explicitly authorized AWS deployment attempt.
 
 ## Executive outcome
 
@@ -15,14 +15,21 @@ security, packaging, and mocked Terraform gates. The audit corrected dependency 
 expanded idempotency and failure tests, strengthened Terraform/IAM assertions, fixed two
 observability configuration defects, and prepared release documentation.
 
-The repository is **not yet published as v0.1.0**. Repository-host settings that require
-authenticated administration remain owner actions: the `main` ruleset, metadata/topics,
-verification of GitHub security toggles, and release publication. No claim is made that
-those settings are enabled. No AWS resource was created, modified, or deleted.
+The repository is **not yet published as v0.1.0**. PR #15 was merged to protected
+`main`; repository metadata, required checks, secret scanning, push protection,
+Dependabot security features, and private vulnerability reporting were applied and
+verified through the authenticated GitHub API.
+
+An initial default-profile apply failed on missing IAM permissions and is documented
+without claiming complete absence of a partial EventBridge rule. The repository owner
+then explicitly selected the SS5 sandbox profile. A new 15-create, zero-change,
+zero-destroy plan was applied successfully; a post-apply plan returned `No changes`.
+Infrastructure controls and direct synthetic Lambda behavior passed. Security Hub is not
+subscribed in SS5, so AWS-owned EventBridge delivery remains unvalidated.
 
 ## Technical reconciliation
 
-- Terraform stable release verified: **1.15.8**. Configuration remains
+- Terraform stable release verified: **1.16.0**. Configuration remains
   `>= 1.10.0, < 2.0.0`.
 - Terraform AWS Provider verified and installed from the signed Registry package:
   **6.62.0**. Configuration remains `>= 6.54.0, < 7.0.0`; the committed lockfile selects
@@ -64,6 +71,7 @@ those settings are enabled. No AWS resource was created, modified, or deleted.
 │   ├── adr/0001..0004
 │   ├── architecture, compatibility, deployment, security, threat-model docs
 │   ├── research-notes.md
+│   ├── deployment-validation.md
 │   ├── github-repository-settings.md
 │   ├── release-process.md
 │   ├── release-notes-v0.1.0.md
@@ -214,7 +222,7 @@ unsupported optional architecture was added.
 
 ## Validation evidence
 
-Validated locally on macOS arm64 with Python 3.13.11:
+Validated locally on macOS arm64 with Python 3.13.11 and Terraform 1.16.0:
 
 - Ruff format/lint: pass.
 - Mypy strict: pass, 13 source files.
@@ -232,6 +240,16 @@ Validated locally on macOS arm64 with Python 3.13.11:
 - OCSF and ASFF local demos: pass without AWS credentials.
 - Lambda package built twice with identical SHA-256:
   `b71d666d0601da101e4a80acdad2fe06a09bb7055088150f92b003418f726202`.
+- SS5 Terraform plan/apply: **15 created, 0 changed, 0 destroyed**; post-apply plan:
+  **No changes**.
+- Deployed control verifier: Lambda runtime/package, DynamoDB billing/encryption/TTL/PITR,
+  SNS encryption/subscriptions, EventBridge target/retry/DLQ, SQS and Lambda resource
+  policies, IAM wildcards, log retention, and four alarms: pass.
+- Synthetic deployed invocations: first `ESCALATE`, exact duplicate `DUPLICATE`, invalid
+  collection `REJECT`; all returned HTTP 200 without Lambda function errors.
+- Native SNS metric: one publication for two identical valid invocations.
+- CloudWatch logs: structured decisions/rejection and six expected EMF workflow metrics;
+  raw fixture title, description, and resource identifier absent.
 
 ## Scanner suppression
 
@@ -261,10 +279,15 @@ make package (twice)
 make demo-local-ocsf
 make demo-local-asff
 make markdown
-terraform 1.15.8 init -backend=false -upgrade
+terraform 1.16.0 init -backend=false -upgrade
 terraform fmt -recursive
 terraform validate
 terraform test
+terraform plan -out=<ignored-plan>
+terraform apply <reviewed-plan> # authorized SS5 deployment
+python scripts/verify_deployment.py <deployed outputs>
+aws lambda invoke <synthetic OCSF fixture> # first delivery and exact duplicate
+aws lambda invoke <synthetic invalid fixture>
 tflint --init
 tflint --recursive
 trivy config --exit-code 1 --severity HIGH,CRITICAL terraform
@@ -272,13 +295,14 @@ python -m pip_audit -r requirements.txt
 ```
 
 Terraform, TFLint, and Trivy binaries were obtained from their official releases and
-verified against published SHA-256 checksums before execution. Public GitHub APIs were
-queried read-only for workflow, release, tag, milestone, PR, and repository metadata.
+verified against published SHA-256 checksums before execution. The authenticated GitHub
+API was used to merge PR #15, enable repository controls, and close obsolete Dependabot
+PRs. The AWS apply was explicitly authorized and used the saved reviewed plan.
 
 ## Known limitations
 
-- No authorized AWS sandbox deployment or live Security Hub delivery was performed as
-  part of this audit.
+- The SS5 infrastructure and synthetic Lambda path were validated, but Security Hub is
+  not subscribed in that account; live AWS-owned finding delivery remains unvalidated.
 - Event schemas can evolve; the bounded adapters require maintenance and fixture updates.
 - Dual mode does not correlate semantically equivalent OCSF and ASFF findings.
 - EventBridge target DLQ does not capture application errors after successful invocation.
@@ -313,35 +337,35 @@ GitHub OIDC deployment, or automated remediation is implemented.
 
 Terraform does not enable or disable pre-existing account-level security services.
 
-## Repository-host actions still requiring the owner
+## Repository-host status
 
-At public-API review time, the repository was public and GitHub recognized MIT-0, but it
-had no description, topics, tag, release, or milestone, and seven open Dependabot pull
-requests. CI, scheduled CodeQL, and scheduled Scorecard runs were successful; the grouped
-Python dependency PR failed at setup because of the Pydantic Core conflict corrected
-locally.
+PR #15 published the reviewed release-readiness work. GitHub recognizes MIT-0, the
+repository now has a description and topics, `main` requires pull requests and the five
+critical GitHub Actions checks, force pushes and deletion are blocked, and linear history
+is required. Secret scanning, push protection, Dependabot alerts/security updates,
+automated security fixes, and private vulnerability reporting are enabled. The five
+obsolete Dependabot action-update PRs were closed after their versions landed through
+PR #15.
 
-The following cannot be completed from an unauthenticated local workspace and are not
-claimed as complete:
-
-1. Publish these reviewed changes through a pull request.
-2. Configure the active `main` ruleset and required checks.
-3. Set description/topics.
-4. Verify/enable Dependabot alerts/security updates, secret scanning, push protection,
-   and private vulnerability reporting.
-5. Close or supersede obsolete Dependabot PRs after the dependency refresh is merged.
-6. Create the annotated `v0.1.0` tag and GitHub Release only after release gates pass on
-   the published commit.
-
-Exact settings and release steps are in `docs/github-repository-settings.md` and
-`docs/release-process.md`.
+The remaining host action is to create the annotated `v0.1.0` tag and GitHub Release
+after this updated audit evidence is reviewed and merged. Exact settings and release
+steps are in `docs/github-repository-settings.md` and `docs/release-process.md`.
 
 ## Safety confirmations
 
-- No `terraform apply` or `terraform destroy` was run.
-- No AWS CLI command or mutating AWS API was invoked.
-- No AWS resource was created, modified, or deleted.
-- No AWS credential, static secret, real account ID, or real finding was created.
-- No attack, vulnerable infrastructure, or remediation was generated.
-- No commit, push, tag, GitHub Release, milestone, or remote setting change was performed.
-- The working changes are local and require maintainer review before publication.
+- No `terraform destroy`, security-service enablement command, attack generation, or
+  remediation command was run.
+- The initial default-profile apply was explicitly authorized and failed on permissions.
+  A second, explicitly authorized SS5 apply created the 15 intended workflow resources;
+  ignored local state records them and must be preserved until cleanup.
+- The SS5 post-apply plan returned `No changes`; the DLQ is empty and no SNS subscription
+  exists. The initial account's possible partial EventBridge rule remains a documented
+  uncertainty because that identity cannot read it.
+- No AWS credential, static secret, full account identifier, or real finding is committed.
+- No attack, vulnerable infrastructure, account-level security-service enablement, or
+  remediation was generated.
+- Only repository-owned synthetic fixtures were invoked directly. Exactly one SNS
+  publication occurred for two identical valid invocations, and raw fixture text was
+  absent from inspected logs.
+- PR #15 was committed, pushed, checked, and squash-merged. GitHub repository settings
+  were hardened. No tag or GitHub Release has yet been created.

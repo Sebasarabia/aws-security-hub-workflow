@@ -24,6 +24,27 @@ No apply is hidden in the Makefile. Do not commit `.tfvars`, plans, state, `.ter
 or the package. Subscribe endpoints to the output topic manually only after considering
 recipient authorization and message handling.
 
+## Read-only post-deployment verification
+
+After apply, use the Terraform outputs and run the verifier with the exact deployed
+names. The verifier performs read-only API calls and exits nonzero on a mismatch:
+
+```bash
+python scripts/verify_deployment.py \
+  --function-name security-hub-workflow-demo-processor \
+  --table-name security-hub-workflow-demo-idempotency \
+  --topic-arn <terraform-sns-topic-arn> \
+  --rule-name security-hub-workflow-demo-ocsf-findings \
+  --dlq-url <terraform-dlq-url> \
+  --region us-east-1 \
+  --schema-mode ocsf \
+  --package build/finding-processor.zip
+```
+
+Adding `--expect-idempotency-record` after a deliberate synthetic Lambda invocation also
+confirms that the deployed concurrency store contains a record. The verifier does not
+create findings, publish events, invoke Lambda, or prove Security Hub delivery.
+
 ## Team backend
 
 Use an **existing**, separately governed S3 bucket. Enable versioning and encryption,
@@ -37,4 +58,3 @@ If the owner later adds deployment, use GitHub OIDC, a repository- and environme
 IAM trust policy, protected environments, manual `workflow_dispatch`, reviewed plan
 artifacts, explicit approval before apply, and a separately explicit destroy operation.
 Never use long-lived AWS keys or expose credentials to pull requests.
-

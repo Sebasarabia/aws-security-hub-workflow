@@ -4,8 +4,8 @@ SPDX-License-Identifier: MIT-0
 
 These settings are part of the repository's security boundary but are not stored in
 Git. They require repository-owner access and must be verified after material GitHub
-platform changes. This document is a configuration checklist, not evidence that a
-setting has been enabled.
+platform changes. The controls below were applied and read back through the authenticated
+GitHub API on 2026-08-29; this document remains the repeatable review checklist.
 
 ## Repository metadata
 
@@ -19,30 +19,30 @@ Use the following public metadata:
 - Features: Issues enabled; Wiki and Discussions disabled unless there is a maintained
   use case. Projects is optional.
 
-## Active ruleset for `main`
+## Active protection for `main`
 
-Create an active branch ruleset targeting the default branch with:
+The default branch currently uses GitHub branch protection with:
 
 - Restrict deletions.
 - Block force pushes.
 - Require a pull request before merging.
 - Require all conversations to be resolved.
 - Require the branch to be up to date before merging.
-- Require these uniquely named checks:
-  - `CI / python`
-  - `CI / terraform`
-  - `CI / markdown`
-  - `CodeQL / analyze (python)`
-  - `CodeQL / analyze (actions)`
+- Require these GitHub Actions check contexts, restricted to the GitHub Actions app:
+  - `python`
+  - `terraform`
+  - `markdown`
+  - `analyze (python)`
+  - `analyze (actions)`
 - Do not require OpenSSF Scorecard as a pull-request check because its workflow runs on
   push, schedule, and branch-protection changes rather than pull requests.
 - For a single-maintainer repository, zero required external approvals is acceptable
   initially. Increase to one approval when another trusted maintainer is available.
-- Do not configure routine bypass actors. Repository administrators can edit an
-  incorrect ruleset through Settings; bypass should not be the normal merge path.
+- Enforce the protection for administrators. Repository administrators can correct an
+  invalid rule through Settings, but bypass is not the normal merge path.
 
-Requiring signed commits and linear history are reasonable follow-up controls after the
-maintainer has tested local signing, Dependabot, and the chosen GitHub merge method.
+Linear history is required. Signed commits remain a reasonable follow-up after the
+maintainer has tested local signing and Dependabot compatibility.
 
 ## Security and quality
 
@@ -70,14 +70,14 @@ Under **Settings → Actions → General**:
 
 ## Release publication
 
-Before publishing `v0.1.0`, verify the ruleset and security settings above, merge the
+Before publishing `v0.1.0`, verify the branch protection and security settings above, merge the
 reviewed change through a pull request, and confirm all required checks on the exact
 release commit. Follow `docs/release-process.md`; do not create or reuse a tag before the
 commit is final.
 
 ## Verification record
 
-Record the review date, reviewer, ruleset name, enabled checks, unresolved security
+Record the review date, reviewer, protection mode, enabled checks, unresolved security
 alerts, and release URL in `docs/audit-report.md` or the release issue. Screenshots are
 optional operational evidence and should not contain tokens, account details, or other
 sensitive browser data.

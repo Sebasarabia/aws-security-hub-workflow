@@ -19,10 +19,10 @@ requested for this project. The notes paraphrase rather than reproduce the sourc
 
 ## Versions selected
 
-- Terraform current stable: **1.15.8**. Configuration range: `>= 1.10.0, < 2.0.0`.
+- Terraform current stable: **1.16.0**. Configuration range: `>= 1.10.0, < 2.0.0`.
   The lower bound retains native mocked-provider tests and is the tested policy floor.
 - HashiCorp AWS Provider current: **6.62.0**. Configuration range: `>= 6.54.0, < 7.0.0`;
-  the lockfile selects 6.62.0. Terraform 1.15.8 installed this signed release directly
+  the lockfile selects 6.62.0. Terraform 1.16.0 installed this signed release directly
   from the Registry during verification.
 - Lambda Python runtimes currently include stable Python 3.10 through 3.14. Python 3.15
   is public preview and is not covered by the Lambda SLA or Technical Support.
@@ -81,9 +81,9 @@ environment; none is active in version 1.
 The refreshed SHA-pinned actions are checkout 7.0.0, setup-python 6.3.0,
 setup-terraform 4.0.1, setup-tflint 6.3.0, and OpenSSF Scorecard 2.4.3. CodeQL remains
 on 3.37.0. Version comments now match the immutable commits selected by Dependabot.
-Branch rulesets, secret scanning, push protection, Dependabot alerts/security updates,
-and private vulnerability reporting are repository-host settings and must be verified
-by an authenticated owner; their intended configuration is recorded separately.
+Branch protection, secret scanning, push protection, Dependabot alerts/security updates,
+and private vulnerability reporting were enabled and verified through the authenticated
+GitHub API on 2026-08-29. Their intended configuration is recorded separately.
 
 The March 2026 Trivy supply-chain incident affected mutable action/setup tags. CI
 therefore avoids the Trivy GitHub Action and installs standalone Trivy 0.74.0 after
