@@ -3,9 +3,8 @@
 SPDX-License-Identifier: MIT-0
 
 These settings are part of the repository's security boundary but are not stored in
-Git. They require repository-owner access and must be verified after material GitHub
-platform changes. The controls below were applied and read back through the authenticated
-GitHub API on 2026-08-29; this document remains the repeatable review checklist.
+Git. They require repository-owner access. Treat this document as a repeatable checklist,
+not proof of the repository's current configuration.
 
 ## Repository metadata
 
@@ -19,10 +18,9 @@ Use the following public metadata:
 - Features: Issues enabled; Wiki and Discussions disabled unless there is a maintained
   use case. Projects is optional.
 
-## Verified protection snapshot for `main`
+## Protection checklist for `main`
 
-At the recorded verification date, the default branch used GitHub branch protection
-with:
+Configure the default branch with:
 
 - Restrict deletions.
 - Block force pushes.
@@ -76,12 +74,8 @@ merge the reviewed change through a pull request, and confirm all required check
 exact release commit. Follow `docs/release-process.md`; do not create or reuse a tag
 before the commit is final.
 
-## Verification record
-
-Record the review date, reviewer, protection mode, enabled checks, unresolved security
-alerts, and release URL in `docs/audit-report.md` or the release issue. Screenshots are
-optional operational evidence and should not contain tokens, account details, or other
-sensitive browser data.
+Record release-specific verification in the release issue or another private operational
+record. Avoid committing screenshots or browser data that may expose account details.
 
 Official guidance:
 

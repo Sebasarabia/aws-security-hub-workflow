@@ -26,16 +26,16 @@ go to CloudWatch. There is no remediation path.
 
 ## Documentation questions resolved
 
-- Current Security Hub uses OCSF 1.6 and `Findings Imported V2`; Security Hub CSPM
-  uses ASFF and `Security Hub Findings - Imported`. Each event contains one finding.
-- Lambda supports Python 3.14 and 3.13. Python 3.13 is selected for maturity and
-  dependency compatibility while retaining long support.
-- Terraform 1.16.4 and AWS Provider 6.66.0 were selected in the 2026-09-26 refresh. The
-  tested minimum remains Terraform 1.10 because all used native test features are
-  available.
-- Provider v6 supports every v1 resource and can manage Security Hub V2 enablement with
-  `aws_securityhub_account_v2`. That account/Regional lifecycle is deliberately outside
-  this workflow state; it is not an unsupported-provider workaround.
+- Current Security Hub uses OCSF `Findings Imported V2`; Security Hub CSPM uses ASFF
+  `Security Hub Findings - Imported`. Each event contains one finding.
+- Python 3.13 is the selected Lambda runtime.
+- Terraform and provider constraints are bounded and all version 1 resources are
+  supported by the AWS Provider.
+- Security Hub enablement is deliberately outside this workflow state as a lifecycle
+  and cost boundary.
+
+Current versions, regional caveats, and primary references are maintained in
+`docs/research-notes.md` rather than duplicated here.
 
 ## Security boundaries
 
