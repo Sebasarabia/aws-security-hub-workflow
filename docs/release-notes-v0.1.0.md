@@ -39,9 +39,6 @@ Synthetic fixtures are unmistakably labeled and contain no real account or findi
 
 ## Known limitations
 
-- An authorized SS5 sandbox deployment and direct synthetic Lambda validation passed.
-  Security Hub is not enabled in that account, so AWS-owned EventBridge delivery remains
-  unvalidated; the reference makes no production-readiness or compliance claim.
 - Idempotency suppresses repeated deliveries of the same schema/update key; it does not
   semantically correlate OCSF and ASFF findings.
 - EventBridge's DLQ covers failed target delivery, not an application exception after a
@@ -51,6 +48,16 @@ Synthetic fixtures are unmistakably labeled and contain no real account or findi
 - Regional service and integration availability must be checked before deployment.
 - No multi-account routing, cross-Region configuration, dashboard, S3 decision records,
   ticketing, or automated remediation is included.
+
+## Post-release validation
+
+At release time, validation covered an authorized sandbox deployment and direct
+synthetic Lambda invocations. In a subsequent owner-operated check, Security Hub
+Essentials was enabled outside this Terraform stack and AWS-owned
+`Findings Imported V2` events traversed EventBridge and the processor successfully.
+This later operational check did not alter the tagged release and does not create a
+production-readiness or compliance claim. See `docs/deployment-validation.md` for the
+sanitized record.
 
 See `README.md`, `docs/deployment.md`, and `docs/costs-and-cleanup.md` before any manual
 AWS deployment.

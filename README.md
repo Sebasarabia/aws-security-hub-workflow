@@ -47,6 +47,10 @@ subscriptions; store raw findings; generate attack traffic; or perform remediati
 - Only for deployment: an AWS account/Region where the chosen capability is already
   enabled, a preconfigured identity, and an explicit account allowlist
 
+Keeping Security Hub enablement outside this state is a lifecycle and cost boundary, not
+a Terraform Provider limitation. Destroying the workflow must not disable the security
+service that supplies its findings.
+
 ## Local quick start (no AWS account)
 
 ```bash
@@ -105,6 +109,10 @@ Policy lives in [`config/triage-policy.json`](config/triage-policy.json). Severi
 an explainable demonstration input, not a claim about organizational risk. Future context
 could include criticality, exposure, account purpose, data sensitivity, exploitability,
 repetition, environment, ownership, and business impact.
+
+An existing SNS KMS key must be symmetric and have a compatible key policy. Terraform
+adds the processor's exact KMS data-key/decrypt permissions but does not modify that
+external key policy.
 
 ## Security, costs, cleanup, and limitations
 

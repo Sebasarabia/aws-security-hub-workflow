@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT-0
 """Notification minimization and idempotency semantics."""
 
 from __future__ import annotations

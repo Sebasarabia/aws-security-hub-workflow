@@ -19,9 +19,10 @@ Use the following public metadata:
 - Features: Issues enabled; Wiki and Discussions disabled unless there is a maintained
   use case. Projects is optional.
 
-## Active protection for `main`
+## Verified protection snapshot for `main`
 
-The default branch currently uses GitHub branch protection with:
+At the recorded verification date, the default branch used GitHub branch protection
+with:
 
 - Restrict deletions.
 - Block force pushes.
@@ -70,10 +71,10 @@ Under **Settings → Actions → General**:
 
 ## Release publication
 
-Before publishing `v0.1.0`, verify the branch protection and security settings above, merge the
-reviewed change through a pull request, and confirm all required checks on the exact
-release commit. Follow `docs/release-process.md`; do not create or reuse a tag before the
-commit is final.
+For every future release, re-verify the branch protection and security settings above,
+merge the reviewed change through a pull request, and confirm all required checks on the
+exact release commit. Follow `docs/release-process.md`; do not create or reuse a tag
+before the commit is final.
 
 ## Verification record
 

@@ -1,12 +1,12 @@
 # SPDX-License-Identifier: MIT-0
 locals {
   name = "${var.project_name}-${var.environment}"
-  common_tags = merge({
+  common_tags = merge(var.additional_tags, {
     Project     = "aws-security-hub-workflow"
     Environment = var.environment
     ManagedBy   = "Terraform"
     Purpose     = "EducationalReference"
-  }, var.additional_tags)
+  })
 
   event_patterns = {
     for family, pattern in {
@@ -21,4 +21,3 @@ locals {
     } : family => pattern if var.finding_schema_mode == family || var.finding_schema_mode == "dual"
   }
 }
-

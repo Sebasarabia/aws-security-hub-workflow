@@ -16,7 +16,7 @@ resource "aws_iam_role_policy" "processor" {
   role = aws_iam_role.processor.id
   policy = jsonencode({
     Version = "2012-10-17"
-    Statement = [
+    Statement = concat([
       {
         Sid      = "WriteOwnLogs"
         Effect   = "Allow"
@@ -35,6 +35,13 @@ resource "aws_iam_role_policy" "processor" {
         Action   = "sns:Publish"
         Resource = aws_sns_topic.escalation.arn
       }
-    ]
+      ], var.sns_kms_key_arn == null ? [] : [
+      {
+        Sid      = "UseExistingSnsKey"
+        Effect   = "Allow"
+        Action   = ["kms:Decrypt", "kms:GenerateDataKey", "kms:GenerateDataKeyWithoutPlaintext"]
+        Resource = var.sns_kms_key_arn
+      }
+    ])
   })
 }

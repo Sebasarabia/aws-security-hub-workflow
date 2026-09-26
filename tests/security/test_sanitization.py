@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT-0
 """Untrusted text and identifier sanitization."""
 
 import pytest

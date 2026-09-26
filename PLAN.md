@@ -18,7 +18,8 @@ go to CloudWatch. There is no remediation path.
 - `ocsf` is the default; `asff` and `dual` are compatibility modes. Dual can receive
   logical duplicates and is intended for teaching or migration.
 - The deployment Region already supports the desired Security Hub capability.
-- Security Hub/Security Hub CSPM and upstream integrations are manual prerequisites.
+- Security Hub/Security Hub CSPM and upstream integrations are prerequisites managed
+  outside this Terraform state.
 - Service-managed encryption is the default. An existing SNS KMS key can be supplied.
 - Local state is acceptable only for a personal demo; teams supply an existing S3
   backend with versioning, encryption, least privilege, and S3 lockfiles.
@@ -29,10 +30,12 @@ go to CloudWatch. There is no remediation path.
   uses ASFF and `Security Hub Findings - Imported`. Each event contains one finding.
 - Lambda supports Python 3.14 and 3.13. Python 3.13 is selected for maturity and
   dependency compatibility while retaining long support.
-- Terraform 1.16.0 and AWS Provider 6.62.0 were current on 2026-08-29. The tested
-  minimum is Terraform 1.10 because all used native test features are available.
-- Provider v6 supports every v1 resource through standard `aws_*` resources; no
-  Security Hub enablement resource is required or used.
+- Terraform 1.16.4 and AWS Provider 6.66.0 were selected in the 2026-09-26 refresh. The
+  tested minimum remains Terraform 1.10 because all used native test features are
+  available.
+- Provider v6 supports every v1 resource and can manage Security Hub V2 enablement with
+  `aws_securityhub_account_v2`. That account/Regional lifecycle is deliberately outside
+  this workflow state; it is not an unsupported-provider workaround.
 
 ## Security boundaries
 

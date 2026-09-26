@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT-0
 """Handler-level deterministic local behavior."""
 
 from __future__ import annotations

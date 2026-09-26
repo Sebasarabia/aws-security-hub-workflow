@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT-0
 """Adapter and envelope behavior."""
 
 from __future__ import annotations
@@ -33,11 +34,22 @@ def test_valid_asff() -> None:
     assert result.is_synthetic is True
 
 
-@pytest.mark.parametrize("field", ["id", "source", "time", "detail", "region"])
+@pytest.mark.parametrize("field", ["id", "source", "account", "time", "detail", "region"])
 def test_missing_envelope_field(field: str) -> None:
     event = fixture("fixtures/ocsf/high-severity.json")
     del event[field]
     with pytest.raises(FindingValidationError, match="envelope_missing"):
+        adapt_event(event)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [("id", ""), ("detail-type", 1), ("account", "not-an-account"), ("time", None), ("region", [])],
+)
+def test_invalid_envelope_scalar(field: str, value: object) -> None:
+    event = fixture("fixtures/ocsf/high-severity.json")
+    event[field] = value
+    with pytest.raises(FindingValidationError, match="envelope_invalid_field"):
         adapt_event(event)
 
 
@@ -130,5 +142,5 @@ def test_ocsf_missing_title_and_event_time() -> None:
 
     event = fixture("fixtures/ocsf/high-severity.json")
     event["time"] = None
-    with pytest.raises(FindingValidationError, match="missing_event_time"):
+    with pytest.raises(FindingValidationError, match="envelope_invalid_field"):
         adapt_event(event)
