@@ -135,21 +135,28 @@ Distinguish visibly:
 Logs are processing records, not forensic evidence. They contain correlation, decision,
 reason code, masked account, and normalized product; never the raw event.
 
-### 12. Live local demo — 6 minutes maximum
+### 12. Validated workflow demo — 6 minutes maximum
 
-Follow `docs/demo-runbook.md` exactly:
+Follow `docs/demo-runbook.md`. If the pre-reviewed AWS evidence is available, show the
+EventBridge rule, sanitized decision records, aggregate metrics, alarms, and empty DLQ.
+Do not expose raw findings, identifiers, account data, or account-specific counts as a
+benchmark. State that this validates one account and Region, not a confirmed incident or
+production readiness.
+
+Keep the deterministic local path ready as the default reproducible fallback:
 
 ```bash
 make demo-local-ocsf
 make demo-local-asff
 ```
 
-Point out the synthetic label, masked account, sanitized notification, decision, reason
-code, and schema family. Show the triage policy and one adapter. Use tests to explain
-duplicate suppression rather than improvising a real AWS finding.
+For the local path, point out the synthetic label, masked account, sanitized notification,
+decision, reason code, and schema family. Use the integration test to explain duplicate
+suppression rather than improvising a finding.
 
-Honesty statement: this demonstrates application behavior without AWS credentials; it
-does not prove EventBridge delivery or a live Security Hub integration.
+Honesty statement: the deployed evidence demonstrates AWS-owned event delivery in the
+validated environment; the local fixtures demonstrate application behavior without AWS
+credentials. Neither represents an attack or confirmed incident.
 
 ### 13. Adoption path — 1 minute
 

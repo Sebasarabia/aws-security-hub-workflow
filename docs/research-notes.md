@@ -2,8 +2,9 @@
 
 SPDX-License-Identifier: MIT-0
 
-Verification date: **2026-08-29**. Sources were limited to the authoritative sources
-requested for this project. The notes paraphrase rather than reproduce the sources.
+Initial verification: **2026-08-29**. Focused version/provider recheck:
+**2026-09-26**. Sources were limited to the authoritative sources requested for this
+project. The notes paraphrase rather than reproduce the sources.
 
 ## Terminology and event contracts
 
@@ -19,35 +20,38 @@ requested for this project. The notes paraphrase rather than reproduce the sourc
 
 ## Versions selected
 
-- Terraform current stable: **1.16.0**. Configuration range: `>= 1.10.0, < 2.0.0`.
+- Terraform current stable: **1.16.4**. Configuration range: `>= 1.10.0, < 2.0.0`.
   The lower bound retains native mocked-provider tests and is the tested policy floor.
-- HashiCorp AWS Provider current: **6.62.0**. Configuration range: `>= 6.54.0, < 7.0.0`;
-  the lockfile selects 6.62.0. Terraform 1.16.0 installed this signed release directly
+- HashiCorp AWS Provider current: **6.66.0**. Configuration range: `>= 6.54.0, < 7.0.0`;
+  the lockfile selects 6.66.0. Terraform 1.16.4 installed this signed release directly
   from the Registry during verification.
 - Lambda Python runtimes currently include stable Python 3.10 through 3.14. Python 3.15
   is public preview and is not covered by the Lambda SLA or Technical Support.
   **Python 3.13** remains selected: it runs on Amazon Linux 2023, is supported into
   2029, and is compatible with all pinned dependencies. A preview runtime is not
   appropriate for this reference.
-- Powertools for AWS Lambda (Python) **3.34.0** is selected. Its official release and
+- Powertools for AWS Lambda (Python) **3.35.0** is selected. Its official release and
   current documentation retain Logger, EMF Metrics, Pydantic-based validation, and
   DynamoDB idempotency capabilities used here.
-- Runtime pins were refreshed to Boto3 1.43.72 and Pydantic 2.13.4. Dependabot proposed
-  an incompatible Pydantic Core 2.48.0 pin; installation proved Pydantic 2.13.4 requires
-  exactly Pydantic Core 2.46.4, which is the corrected reproducible pin.
+- Runtime pins were refreshed to Boto3 1.43.103 and Pydantic 2.13.5. Dependency
+  resolution confirms Pydantic Core 2.46.5 as the compatible exact pin.
 - Runtime dependencies are exact-pinned in `requirements.txt`, including Boto3.
   The runtime-provided SDK is not relied upon.
 
 ## Terraform support
 
-AWS Provider 6.62.0 supports the standard resources proposed here:
+AWS Provider 6.66.0 supports the standard resources proposed here:
 `aws_cloudwatch_event_rule`, `aws_cloudwatch_event_target`, `aws_lambda_function`,
 `aws_lambda_permission`, `aws_iam_role`, `aws_iam_role_policy`,
 `aws_dynamodb_table`, `aws_sns_topic`, `aws_sqs_queue`, `aws_sqs_queue_policy`,
 `aws_cloudwatch_log_group`, and `aws_cloudwatch_metric_alarm`. No unsupported
-resource is required. Security Hub enablement/configuration resources are deliberately
-not proposed. The deployment artifact must be built before planning; Terraform does
-not install Python dependencies.
+resource is required. AWS Provider 6.66.0 also supports
+`aws_securityhub_account_v2`, but it is deliberately excluded: Security Hub has an
+account/Regional lifecycle and cost boundary independent of this workflow, and
+destroying that Terraform resource disables Security Hub V2. The classic
+`aws_securityhub_account` resource manages Security Hub CSPM, not the current unified
+Security Hub. The deployment artifact must be built before planning; Terraform does not
+install Python dependencies.
 
 ## Regional availability and limitations
 
@@ -78,9 +82,10 @@ commit-SHA pins because a full SHA is the immutable action reference. CI does no
 covers Actions and pip. A future deployment workflow should use OIDC and a protected
 environment; none is active in version 1.
 
-The refreshed SHA-pinned actions are checkout 7.0.0, setup-python 6.3.0,
-setup-terraform 4.0.1, setup-tflint 6.3.0, and OpenSSF Scorecard 2.4.3. CodeQL remains
-on 3.37.0. Version comments now match the immutable commits selected by Dependabot.
+As refreshed on 2026-09-26, the SHA-pinned actions are checkout 7.0.1, setup-python
+7.0.0, setup-terraform 4.0.1, setup-tflint 6.3.1, OpenSSF Scorecard 2.4.4, and CodeQL
+4.38.2. CodeQL v4 replaces the still-supported but December 2026-deprecated v3 line.
+Version comments match the immutable commits resolved from official GitHub release tags.
 Branch protection, secret scanning, push protection, Dependabot alerts/security updates,
 and private vulnerability reporting were enabled and verified through the authenticated
 GitHub API on 2026-08-29. Their intended configuration is recorded separately.
@@ -106,7 +111,8 @@ removes mutable action indirection and makes the consumed binary explicit.
 
 - [Terraform releases](https://releases.hashicorp.com/terraform/)
 - [AWS Provider Registry](https://registry.terraform.io/providers/hashicorp/aws/latest)
-- [AWS Provider 6.62.0 release](https://github.com/hashicorp/terraform-provider-aws/releases/tag/v6.62.0)
+- [AWS Provider 6.66.0 release](https://github.com/hashicorp/terraform-provider-aws/releases/tag/v6.66.0)
+- [Terraform `aws_securityhub_account_v2` resource](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/securityhub_account_v2)
 - [Terraform provider requirements and lockfiles](https://developer.hashicorp.com/terraform/language/providers/requirements)
 - [Terraform mocked tests](https://developer.hashicorp.com/terraform/language/tests/mocking)
 - [S3 backend and S3 lockfiles](https://developer.hashicorp.com/terraform/language/backend/s3)
@@ -123,9 +129,11 @@ removes mutable action indirection and makes the consumed binary explicit.
 - [Security Hub CSPM endpoints](https://docs.aws.amazon.com/general/latest/gr/sechub.html)
 - [EventBridge retry policy](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-retry-policy.html)
 - [EventBridge target DLQs](https://docs.aws.amazon.com/eventbridge/latest/userguide/eb-rule-dlq.html)
+- [SNS key management](https://docs.aws.amazon.com/sns/latest/dg/sns-key-management.html)
 - [Powertools Python documentation](https://docs.powertools.aws.dev/lambda/python/latest/)
-- [Powertools Python 3.34.0 release](https://github.com/aws-powertools/powertools-lambda-python/releases/tag/v3.34.0)
+- [Powertools Python 3.35.0 release](https://github.com/aws-powertools/powertools-lambda-python/releases/tag/v3.35.0)
 - [GitHub Actions secure use reference](https://docs.github.com/en/actions/reference/security/secure-use)
+- [CodeQL Action changelog](https://github.com/github/codeql-action/blob/main/CHANGELOG.md)
 - [GitHub ruleset rules](https://docs.github.com/en/repositories/configuring-branches-and-merges-in-your-repository/managing-rulesets/available-rules-for-rulesets)
 - [GitHub private vulnerability reporting](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/configure-vulnerability-reporting/configure-for-a-repository)
 - [Trivy 2026 security advisory](https://github.com/aquasecurity/trivy/security/advisories/GHSA-69fq-xp46-6x23)

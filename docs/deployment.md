@@ -38,8 +38,18 @@ python scripts/verify_deployment.py \
   --dlq-url <terraform-dlq-url> \
   --region us-east-1 \
   --schema-mode ocsf \
+  --expect-no-subscriptions \
   --package build/finding-processor.zip
 ```
+
+Pass the matching timeout, retention, retry, idempotency, log-level, or SNS KMS options
+when overriding their Terraform defaults. In `dual` mode, run the verifier once for each
+rule name; each rule must contain one of the two documented detail types.
+
+If `sns_kms_key_arn` is set, its key policy must allow the processor role to generate
+data keys and decrypt. Terraform adds the exact symmetric data-key actions and
+`kms:Decrypt` to the role policy, scoped to the supplied key, but it does not modify an
+externally managed key policy. Amazon SNS supports symmetric KMS keys only.
 
 Adding `--expect-idempotency-record` after a deliberate synthetic Lambda invocation also
 confirms that the deployed concurrency store contains a record. The verifier does not

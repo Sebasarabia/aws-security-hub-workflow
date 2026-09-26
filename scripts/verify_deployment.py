@@ -36,6 +36,14 @@ def main() -> int:
     parser.add_argument("--region", default="us-east-1")
     parser.add_argument("--schema-mode", choices=("ocsf", "asff", "dual"), default="ocsf")
     parser.add_argument("--package", type=Path)
+    parser.add_argument("--lambda-timeout", type=int, default=30)
+    parser.add_argument("--log-retention-days", type=int, default=30)
+    parser.add_argument("--event-maximum-age", type=int, default=3600)
+    parser.add_argument("--event-retry-attempts", type=int, default=10)
+    parser.add_argument("--idempotency-expiry-seconds", type=int, default=86400)
+    parser.add_argument("--log-level", default="INFO")
+    parser.add_argument("--sns-kms-key-id", default="alias/aws/sns")
+    parser.add_argument("--expect-no-subscriptions", action="store_true")
     parser.add_argument("--expect-idempotency-record", action="store_true")
     args = parser.parse_args()
 
@@ -53,13 +61,14 @@ def main() -> int:
     require(lambda_cfg.get("State") == "Active", "Lambda is not active")
     require(lambda_cfg.get("Runtime") == "python3.13", "unexpected Lambda runtime")
     require(lambda_cfg.get("Architectures") == ["arm64"], "unexpected Lambda architecture")
-    require(lambda_cfg.get("Timeout") == 30, "unexpected Lambda timeout")
+    require(lambda_cfg.get("Timeout") == args.lambda_timeout, "unexpected Lambda timeout")
     environment = lambda_cfg.get("Environment", {}).get("Variables", {})
     expected_environment = {
         "FINDING_SCHEMA_MODE": args.schema_mode,
         "IDEMPOTENCY_TABLE": args.table_name,
         "NOTIFICATION_TOPIC_ARN": args.topic_arn,
-        "POWERTOOLS_LOG_LEVEL": "INFO",
+        "IDEMPOTENCY_EXPIRY_SECONDS": str(args.idempotency_expiry_seconds),
+        "POWERTOOLS_LOG_LEVEL": args.log_level,
         "POWERTOOLS_METRICS_NAMESPACE": "SecurityHubWorkflow",
         "POWERTOOLS_SERVICE_NAME": "finding-processor",
         "TRIAGE_POLICY_PATH": "config/triage-policy.json",
@@ -96,22 +105,38 @@ def main() -> int:
         require(count > 0, "expected idempotency record is absent")
 
     topic = sns.get_topic_attributes(TopicArn=args.topic_arn)["Attributes"]
-    require(topic.get("KmsMasterKeyId") == "alias/aws/sns", "unexpected SNS encryption key")
-    require(topic.get("SubscriptionsConfirmed") == "0", "unexpected SNS subscription exists")
+    require(topic.get("KmsMasterKeyId") == args.sns_kms_key_id, "unexpected SNS encryption key")
+    if args.expect_no_subscriptions:
+        require(topic.get("SubscriptionsConfirmed") == "0", "unexpected SNS subscription exists")
 
     rule = events.describe_rule(Name=args.rule_name)
     require(rule.get("State") == "ENABLED", "EventBridge rule is disabled")
     pattern = json.loads(rule["EventPattern"])
-    expected_type = "Findings Imported V2" if args.schema_mode == "ocsf" else None
-    if expected_type:
-        require(pattern.get("source") == ["aws.securityhub"], "unexpected EventBridge source")
-        require(pattern.get("detail-type") == [expected_type], "unexpected EventBridge event type")
+    expected_types = {
+        "ocsf": {"Findings Imported V2"},
+        "asff": {"Security Hub Findings - Imported"},
+        "dual": {"Findings Imported V2", "Security Hub Findings - Imported"},
+    }
+    detail_types = pattern.get("detail-type", [])
+    require(pattern.get("source") == ["aws.securityhub"], "unexpected EventBridge source")
+    require(
+        isinstance(detail_types, list)
+        and len(detail_types) == 1
+        and detail_types[0] in expected_types[args.schema_mode],
+        "unexpected EventBridge event type",
+    )
     targets = events.list_targets_by_rule(Rule=args.rule_name)["Targets"]
     require(len(targets) == 1, "EventBridge rule must have exactly one target")
     target = targets[0]
     require(target.get("Arn") == lambda_cfg.get("FunctionArn"), "unexpected EventBridge target")
-    require(target.get("RetryPolicy", {}).get("MaximumEventAgeInSeconds") == 3600, "bad event age")
-    require(target.get("RetryPolicy", {}).get("MaximumRetryAttempts") == 10, "bad retry count")
+    require(
+        target.get("RetryPolicy", {}).get("MaximumEventAgeInSeconds") == args.event_maximum_age,
+        "bad event age",
+    )
+    require(
+        target.get("RetryPolicy", {}).get("MaximumRetryAttempts") == args.event_retry_attempts,
+        "bad retry count",
+    )
 
     queue = sqs.get_queue_attributes(QueueUrl=args.dlq_url, AttributeNames=["All"])["Attributes"]
     require(queue.get("SqsManagedSseEnabled") == "true", "SQS managed encryption is disabled")
@@ -151,16 +176,24 @@ def main() -> int:
     log_groups = logs.describe_log_groups(logGroupNamePrefix=f"/aws/lambda/{args.function_name}", limit=1)[
         "logGroups"
     ]
-    require(len(log_groups) == 1, "Lambda log group is absent")
-    require(log_groups[0].get("retentionInDays") == 30, "unexpected log retention")
+    expected_log_group = f"/aws/lambda/{args.function_name}"
+    require(
+        len(log_groups) == 1 and log_groups[0].get("logGroupName") == expected_log_group,
+        "Lambda log group is absent",
+    )
+    require(
+        log_groups[0].get("retentionInDays") == args.log_retention_days,
+        "unexpected log retention",
+    )
 
+    resource_prefix = args.function_name.removesuffix("-processor")
     expected_alarms = {
-        "security-hub-workflow-demo-lambda-errors",
-        "security-hub-workflow-demo-lambda-throttles",
-        "security-hub-workflow-demo-dlq-visible",
-        "security-hub-workflow-demo-notification-failures",
+        f"{resource_prefix}-lambda-errors",
+        f"{resource_prefix}-lambda-throttles",
+        f"{resource_prefix}-dlq-visible",
+        f"{resource_prefix}-notification-failures",
     }
-    alarms = cloudwatch.describe_alarms(AlarmNamePrefix="security-hub-workflow-demo-")
+    alarms = cloudwatch.describe_alarms(AlarmNamePrefix=f"{resource_prefix}-")
     actual_alarms = {alarm["AlarmName"] for alarm in alarms["MetricAlarms"]}
     require(expected_alarms <= actual_alarms, "one or more required alarms are absent")
 
@@ -174,7 +207,7 @@ def main() -> int:
                 "iam": "no_wildcard_actions_or_resources",
                 "lambda": "active_python3.13_arm64_package_verified",
                 "logs": "retention_verified",
-                "sns": "encrypted_no_subscriptions",
+                "sns": "encryption_verified",
             },
             sort_keys=True,
         )

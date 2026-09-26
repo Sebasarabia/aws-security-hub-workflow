@@ -31,7 +31,7 @@ Before creating a tag:
 7. Confirm the worktree is clean and the exact release commit is on `origin/main`.
 8. Confirm no state, plans, `.tfvars`, credentials, build directories, or ZIP files are
    tracked.
-9. Review `docs/release-notes-v0.1.0.md` against the final diff.
+9. Prepare version-specific release notes and review them against the final diff.
 
 ## Manual publication
 
@@ -41,8 +41,9 @@ The maintainer performs these actions only after the reviewed change is merged:
 git switch main
 git pull --ff-only
 make check
-git tag -a v0.1.0 -m "aws-security-hub-workflow v0.1.0"
-git push origin v0.1.0
+VERSION=v0.1.1 # Replace with the reviewed next version.
+git tag -a "$VERSION" -m "aws-security-hub-workflow $VERSION"
+git push origin "$VERSION"
 ```
 
 Create a GitHub Release from that tag, use the prepared release notes, and mark it as a

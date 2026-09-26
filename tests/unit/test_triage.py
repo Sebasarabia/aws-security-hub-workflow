@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT-0
 """Policy decisions remain simple and explainable."""
 
 from __future__ import annotations

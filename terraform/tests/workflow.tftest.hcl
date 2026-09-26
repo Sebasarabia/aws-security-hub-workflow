@@ -176,3 +176,42 @@ run "invalid_log_level" {
   variables { log_level = "TRACE" }
   expect_failures = [var.log_level]
 }
+
+run "existing_sns_kms_key" {
+  command = apply
+  variables {
+    sns_kms_key_arn = "arn:aws:kms:us-east-1:000000000000:key/00000000-0000-0000-0000-000000000000"
+  }
+
+  assert {
+    condition     = aws_sns_topic.escalation.kms_master_key_id == var.sns_kms_key_arn
+    error_message = "SNS must use the supplied KMS key."
+  }
+  assert {
+    condition = (
+      length(jsondecode(aws_iam_role_policy.processor.policy).Statement) == 4 &&
+      jsondecode(aws_iam_role_policy.processor.policy).Statement[3].Sid == "UseExistingSnsKey" &&
+      toset(jsondecode(aws_iam_role_policy.processor.policy).Statement[3].Action) == toset(["kms:Decrypt", "kms:GenerateDataKey", "kms:GenerateDataKeyWithoutPlaintext"]) &&
+      jsondecode(aws_iam_role_policy.processor.policy).Statement[3].Resource == var.sns_kms_key_arn
+    )
+    error_message = "Lambda must receive only the required permissions on the supplied SNS KMS key."
+  }
+}
+
+run "required_tags_cannot_be_overridden" {
+  command = apply
+  variables {
+    additional_tags = {
+      ManagedBy = "SomeoneElse"
+      Owner     = "security-team"
+    }
+  }
+
+  assert {
+    condition = (
+      local.common_tags["ManagedBy"] == "Terraform" &&
+      local.common_tags["Owner"] == "security-team"
+    )
+    error_message = "Additional tags must not replace required ownership tags."
+  }
+}

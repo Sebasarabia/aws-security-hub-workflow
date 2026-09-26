@@ -9,7 +9,7 @@ Likelihood is qualitative and context-dependent; no numeric risk score is implie
 | Threat | Likelihood / impact | Mitigation | Detection | Residual risk / control |
 |---|---|---|---|---|
 | Malformed finding | High / Medium | Pydantic, envelope/adapters, bounds | Rejected metric/log | Schema drift; adapter tests |
-| Spoofed synthetic event | Medium / Medium | Default bus source pattern plus revalidation and labels | source/reject records | Account principal can put custom events; IAM governance |
+| Spoofed/direct invocation | Medium / Medium | AWS-owned source pattern, Lambda source-ARN permission, full payload validation | source/reject records | A separately privileged principal could invoke Lambda directly; IAM governance |
 | Duplicate/replay | High / Medium | Powertools DynamoDB key, TTL, concurrency lock | Duplicate metric | Semantic cross-schema duplicates; dual warning |
 | Log injection | Medium / Medium | Remove controls/newlines, structured fields, no raw event | log review | Unicode visual ambiguity; sanitization tests |
 | Sensitive leakage | Medium / High | minimization, masking, no raw log/S3, short SNS | notification/log review | titles may still be sensitive; field limits/tests |

@@ -35,10 +35,12 @@ Embedded Metric Format through the existing log stream, so the role does not nee
 otherwise wildcard-scoped `cloudwatch:PutMetricData` permission.
 
 DynamoDB/SQS use service-managed at-rest encryption and SNS uses `alias/aws/sns` by
-default. An existing customer-managed SNS key is optional. A CMK adds charges, policy and
-service-principal complexity, rotation/deletion lifecycle, and risk of making messages
-unavailable. No key is created just for appearance. SNS contains minimal operational
-context and no automatic subscription.
+default. An existing customer-managed SNS key is optional. When supplied, Terraform grants
+the processor the exact symmetric data-key actions and `kms:Decrypt` only on that key;
+the operator must also maintain a compatible key policy. A CMK adds charges, policy and
+complexity, rotation/deletion lifecycle, and risk of making messages unavailable. No key
+is created just for appearance. SNS contains minimal operational context and no automatic
+subscription.
 
 S3 raw storage is excluded because it duplicates sensitive data without a v1 requirement.
 Future decision records should contain only normalized/sanitized outcomes and must not be

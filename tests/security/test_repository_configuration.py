@@ -28,7 +28,6 @@ def test_terraform_does_not_enable_excluded_services_or_build_during_apply() -> 
     )
     resource_types = set(re.findall(r'^resource\s+"([^"]+)"', terraform, re.MULTILINE))
     forbidden = {
-        "aws_securityhub_account",
         "aws_guardduty_detector",
         "aws_inspector2_enabler",
         "aws_macie2_account",
@@ -36,6 +35,7 @@ def test_terraform_does_not_enable_excluded_services_or_build_during_apply() -> 
         "aws_organizations_organization",
     }
     assert resource_types.isdisjoint(forbidden)
+    assert not any(resource_type.startswith("aws_securityhub_") for resource_type in resource_types)
     assert "local-exec" not in terraform
 
 

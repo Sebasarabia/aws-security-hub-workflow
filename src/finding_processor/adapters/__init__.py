@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import re
 from collections.abc import Mapping
 from typing import Any
 
@@ -16,11 +17,16 @@ ASFF_DETAIL_TYPE = "Security Hub Findings - Imported"
 
 
 def adapt_event(event: Mapping[str, Any]) -> NormalizedFinding:
-    required = ("version", "id", "detail-type", "source", "time", "region", "detail")
+    required = ("version", "id", "detail-type", "source", "account", "time", "region", "detail")
     if any(key not in event for key in required):
         raise FindingValidationError("event_envelope_missing_required_field")
     if event.get("version") != "0" or event.get("source") != "aws.securityhub":
         raise FindingValidationError("event_envelope_not_supported")
+    if any(
+        not isinstance(event.get(field), str) or not event[field]
+        for field in ("id", "detail-type", "account", "time", "region")
+    ) or not re.fullmatch(r"[0-9]{12}", event["account"]):
+        raise FindingValidationError("event_envelope_invalid_field")
     detail = event.get("detail")
     if not isinstance(detail, Mapping):
         raise FindingValidationError("event_detail_not_object")

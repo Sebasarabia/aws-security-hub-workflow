@@ -1,3 +1,4 @@
+# SPDX-License-Identifier: MIT-0
 """Test environment must never discover real AWS credentials."""
 
 import os
