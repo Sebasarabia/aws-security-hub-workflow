@@ -49,15 +49,5 @@ Synthetic fixtures are unmistakably labeled and contain no real account or findi
 - No multi-account routing, cross-Region configuration, dashboard, S3 decision records,
   ticketing, or automated remediation is included.
 
-## Post-release validation
-
-At release time, validation covered an authorized sandbox deployment and direct
-synthetic Lambda invocations. In a subsequent owner-operated check, Security Hub
-Essentials was enabled outside this Terraform stack and AWS-owned
-`Findings Imported V2` events traversed EventBridge and the processor successfully.
-This later operational check did not alter the tagged release and does not create a
-production-readiness or compliance claim. See `docs/deployment-validation.md` for the
-sanitized record.
-
 See `README.md`, `docs/deployment.md`, and `docs/costs-and-cleanup.md` before any manual
 AWS deployment.
